@@ -269,6 +269,23 @@ label.ck{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;cursor:
   border-radius:12px;padding:6px 12px;cursor:pointer;color:var(--text);
 }
 .pick-list button:hover{border-color:var(--accent);background:var(--accent-l)}
+/* パスワード入力 */
+.pin-dots{display:flex;gap:12px;justify-content:center;margin:14px 0 8px}
+.pin-dot{
+  width:16px;height:16px;border-radius:50%;border:2px solid var(--line);background:#fff;transition:.12s;
+}
+.pin-dot.on{background:var(--accent);border-color:var(--accent);transform:scale(1.12)}
+.pin-msg{text-align:center;font-size:12px;font-weight:700;color:var(--warn);min-height:1.4em}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:250px;margin:8px auto 0}
+.pin-key{
+  font-family:inherit;font-size:20px;font-weight:700;color:var(--text);
+  border:1.5px solid var(--line);background:#fff;border-radius:14px;
+  padding:12px 0;cursor:pointer;transition:.1s;
+}
+.pin-key:hover{background:var(--accent-l);border-color:var(--accent);color:var(--accent-d)}
+.pin-key:active{transform:scale(.94)}
+.pin-shake{animation:pinshake .35s}
+@keyframes pinshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}60%{transform:translateX(7px)}}
 
 /* ===== 統計 ===== */
 table.heat{border-collapse:collapse;font-size:11px}
@@ -560,6 +577,20 @@ table.heat thead th{top:0;z-index:2}
       <div class="row" id="bgm-btns"></div>
     </div>
     <div class="card">
+      <h2>🔒 先生画面のパスワード</h2>
+      <div class="hint">
+        子ども画面から先生画面にもどるときに、4けたの数字をたずねます。<br>
+        <span id="pin-hint"></span>
+      </div>
+      <div class="row">
+        <input type="password" id="pin-old"  inputmode="numeric" maxlength="4" placeholder="今のパスワード" style="width:130px">
+        <input type="password" id="pin-new1" inputmode="numeric" maxlength="4" placeholder="新しい4けた" style="width:120px">
+        <input type="password" id="pin-new2" inputmode="numeric" maxlength="4" placeholder="もう一度" style="width:110px">
+        <button class="btn sm primary" onclick="changePin()">変更する</button>
+      </div>
+      <div id="pin-result" style="margin-top:8px;font-size:12px"></div>
+    </div>
+    <div class="card">
       <h2>💾 データの持ち出し</h2>
       <div class="hint">別の端末に引き継ぐときに使います。書き出したファイルを、移行先で読み込んでください。</div>
       <div class="row">
@@ -684,7 +715,9 @@ var S={
   seatHist:{},         // name -> {"r_c":回数}
   rounds:0,
   history:[],          // {t:日時, a:{seatId:name}}
-  font:'maru', theme:'default', bgm:'none', sound:true
+  font:'maru', theme:'default', bgm:'none', sound:true,
+  pin:'1234',          // 先生画面にもどるときのパスワード
+  screen:'t'           // 最後に開いていた画面（'t'=先生 'k'=子ども）
 };
 var current={};        // 今の配置 {seatId:name}
 var uncommitted=false; // まだ統計に記録していない「新しい配置」かどうか
@@ -847,6 +880,7 @@ function tab(name,btn){
 function toKid(){
   ac()&&ac().resume&&ac().resume();
   id('scr-t').classList.remove('on'); id('scr-k').classList.add('on');
+  S.screen='k'; save();          // リロードしても子ども画面のままにする
   resetKid();
   kReadyMsg();
 }
@@ -864,8 +898,80 @@ function kReroll(){
   renderSeats(); kReadyMsg(); sndSelect(); save();
 }
 function toTeacher(){
+  askPin(toTeacherNow);          // パスワードが合ったときだけ切り替える
+}
+function toTeacherNow(){
   bgmStop(); clearInterval(spinIv); clearInterval(oboIv); oboToken++;
   id('scr-k').classList.remove('on'); id('scr-t').classList.add('on');
+  S.screen='t'; save();
+  applyTZoom();
+}
+
+/* ---- 先生画面にもどるためのパスワード ---- */
+var pinBuf='', pinThen=null;
+function askPin(onOk){
+  if(!/^\d{4}$/.test(S.pin||'')){ onOk(); return; }   // 未設定なら素通し
+  pinBuf=''; pinThen=onOk;
+  drawPin('');
+  id('overlay').classList.add('on');
+}
+function drawPin(msg){
+  var dots='',i;
+  for(i=0;i<4;i++) dots+='<span class="pin-dot'+(i<pinBuf.length?' on':'')+'"></span>';
+  var keys='';
+  for(i=1;i<=9;i++) keys+='<button class="pin-key" onclick="pinTap(\''+i+'\')">'+i+'</button>';
+  keys+='<button class="pin-key" onclick="pinBack()" title="1文字消す">←</button>'+
+        '<button class="pin-key" onclick="pinTap(\'0\')">0</button>'+
+        '<button class="pin-key" onclick="closeModal()" title="やめる">×</button>';
+  id('modal').innerHTML=
+    '<h3>🔒 先生画面にもどる</h3>'+
+    '<div style="font-size:12px;color:var(--sub);text-align:center">4けたのパスワードを入れてください</div>'+
+    '<div class="pin-dots'+(msg?' pin-shake':'')+'">'+dots+'</div>'+
+    '<div class="pin-msg">'+(msg||'')+'</div>'+
+    '<div class="pin-pad">'+keys+'</div>'+
+    '<div style="text-align:center;margin-top:12px">'+
+      '<button class="btn sm" onclick="pinForgot()" style="font-size:11px">パスワードが分からないとき</button>'+
+    '</div>';
+}
+function pinTap(d){
+  if(pinBuf.length>=4)return;
+  pinBuf+=d; sndClick(); drawPin('');
+  if(pinBuf.length===4) setTimeout(pinCheck,140);
+}
+function pinBack(){ if(pinBuf){ pinBuf=pinBuf.slice(0,-1); drawPin(''); } }
+function pinCheck(){
+  if(pinBuf===S.pin){
+    var f=pinThen; pinThen=null; pinBuf='';
+    id('overlay').classList.remove('on');
+    sndSelect(); if(f)f();
+  }else{
+    pinBuf=''; sndDelete(); drawPin('ちがいます。もう一度入れてください');
+  }
+}
+function pinForgot(){
+  if(!confirm('パスワードが分からないときは、保存されているデータを消すと初期パスワード「1234」に戻ります。\n\n名簿・座席・統計・履歴もすべて消えます。よろしいですか？'))return;
+  if(!confirm('本当に消してよろしいですか？　元に戻せません。\n\n（設定タブの「書き出す」でバックアップしてあれば、あとで読み込めます）'))return;
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  location.reload();
+}
+/* 設定タブでパスワードを変える */
+function changePin(){
+  var o=id('pin-old').value.trim(), a=id('pin-new1').value.trim(), b=id('pin-new2').value.trim();
+  var r=id('pin-result');
+  function ng(m){ r.innerHTML='<span style="color:var(--warn);font-weight:700">⚠️ '+m+'</span>'; sndDelete(); }
+  if(o!==S.pin) return ng('今のパスワードがちがいます。');
+  if(!/^\d{4}$/.test(a)) return ng('新しいパスワードは数字4けたで入れてください。');
+  if(a!==b) return ng('新しいパスワードが一致しません。');
+  S.pin=a;
+  id('pin-old').value=''; id('pin-new1').value=''; id('pin-new2').value='';
+  r.innerHTML='<span style="color:var(--ok);font-weight:700">✅ 変更しました。忘れないようにしてください。</span>';
+  sndSelect(); save(); renderPinHint();
+}
+function renderPinHint(){
+  var el=id('pin-hint'); if(!el)return;
+  el.innerHTML = (S.pin==='1234')
+    ? '<span style="color:var(--warn);font-weight:700">いまは初期パスワード「1234」のままです。変更をおすすめします。</span>'
+    : 'パスワードは設定済みです。';
 }
 
 /* =========================================================
@@ -1151,6 +1257,7 @@ function pick(name){
 function closeModal(e){
   if(e&&e.target!==id('overlay'))return;
   id('overlay').classList.remove('on'); pickTarget=null;
+  pinThen=null; pinBuf='';          // パスワード入力をやめたときの後始末
 }
 
 /* =========================================================
@@ -2087,7 +2194,7 @@ function applyAllFromState(){
   id('num-card').style.display=S.students.length?'block':'none';
   ensureCells();
   renderSeats(); renderNumList(); renderVision(); renderSeps(); renderSexStat();
-  updateSelects(); renderConfBtns(); updateRound(); renderHistory();
+  updateSelects(); renderConfBtns(); updateRound(); renderHistory(); renderPinHint();
   var m={}; activeSeats().forEach(function(s){ m[s]=S.cells[s].name||''; });
   current=m;
 }
@@ -2096,7 +2203,17 @@ function init(){
   if(!had){ S.rows=5; S.cols=6; applyPreset(30); }
   applyAllFromState();
   if(had) showSave('loaded');
+  // 最後に子ども画面だったなら、そのまま子ども画面で開く
+  // （リロードすれば先生画面に入れる、という抜け道をなくすため）
+  if(S.screen==='k'){
+    id('scr-t').classList.remove('on'); id('scr-k').classList.add('on');
+    resetKid();
+  }
   document.addEventListener('keydown',function(e){
+    if(pinThen&&id('overlay').classList.contains('on')){
+      if(/^[0-9]$/.test(e.key)){ pinTap(e.key); e.preventDefault(); return; }
+      if(e.key==='Backspace'){ pinBack(); e.preventDefault(); return; }
+    }
     if(e.key==='Escape') closeModal({target:id('overlay')});
   });
   var rzTimer=null;
