@@ -2394,16 +2394,46 @@ function applyAllFromState(){
   var m={}; activeSeats().forEach(function(s){ m[s]=S.cells[s].name||''; });
   current=m;
 }
+/* 起動に失敗したときは、白い画面のままにせず理由を出して逃げ道を作る */
+function showBootError(e){
+  var box=document.createElement('div');
+  box.style.cssText='position:fixed;inset:0;z-index:9999;background:#fff;color:#333;'+
+    'font-family:sans-serif;padding:24px;overflow:auto;line-height:1.9';
+  box.innerHTML=
+    '<h1 style="color:#c0392b;font-size:20px">⚠️ 起動できませんでした</h1>'+
+    '<p>保存されているデータを読み込めませんでした。下のボタンでやり直せます。</p>'+
+    '<pre style="background:#f4f4f4;padding:12px;border-radius:8px;font-size:12px;'+
+      'white-space:pre-wrap;word-break:break-all">'+
+      String((e&&e.message)||e)+'\n\n'+String((e&&e.stack)||'')+'</pre>'+
+    '<p><button id="boot-reset" style="font-family:inherit;font-size:16px;padding:12px 22px;'+
+      'border:none;border-radius:12px;background:#7c5cff;color:#fff;cursor:pointer">'+
+      '保存データを消してやり直す</button></p>'+
+    '<p style="font-size:13px;color:#777">名簿・統計・履歴も消えます。'+
+      'この文章を先生に見せると原因が分かります。</p>';
+  document.body.appendChild(box);
+  var b=document.getElementById('boot-reset');
+  if(b) b.onclick=function(){
+    if(!confirm('保存データをすべて消します。よろしいですか？'))return;
+    try{ localStorage.removeItem(KEY); }catch(x){}
+    location.reload();
+  };
+}
 function init(){
-  var had=load();
-  if(!had){ S.rows=5; S.cols=6; applyPreset(30); }
-  applyAllFromState();
-  if(had) showSave('loaded');
-  // 最後に子ども画面だったなら、そのまま子ども画面で開く
-  // （リロードすれば先生画面に入れる、という抜け道をなくすため）
-  if(S.screen==='k'){
-    id('scr-t').classList.remove('on'); id('scr-k').classList.add('on');
-    resetKid();
+  var had=false;
+  try{ had=load(); }catch(e){ had=false; }
+  try{
+    if(!had){ S.rows=5; S.cols=6; applyPreset(30); }
+    applyAllFromState();
+    if(had) showSave('loaded');
+    // 最後に子ども画面だったなら、そのまま子ども画面で開く
+    // （リロードすれば先生画面に入れる、という抜け道をなくすため）
+    if(S.screen==='k'){
+      id('scr-t').classList.remove('on'); id('scr-k').classList.add('on');
+      resetKid();
+    }
+  }catch(e){
+    showBootError(e);
+    return;
   }
   document.addEventListener('keydown',function(e){
     if(pinThen&&id('overlay').classList.contains('on')){
@@ -2418,7 +2448,11 @@ function init(){
     rzTimer=setTimeout(function(){ applyTZoom(); applyKZoom(); },150);
   });
 }
-init();
+/* 想定外の失敗も拾って、真っ白のままにしない */
+window.addEventListener('error',function(ev){
+  if(!document.getElementById('boot-reset') && !window.__booted) showBootError(ev.error||ev.message);
+});
+try{ init(); window.__booted=true; }catch(e){ showBootError(e); }
 </script>
 </body>
 </html>
