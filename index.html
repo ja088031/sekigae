@@ -490,14 +490,14 @@ table.heat thead th{top:0;z-index:2}
   <div class="pane" id="pane-care">
     <div class="card">
       <h2>👓 視力配慮（前の席にする）</h2>
-      <div class="hint">選んだ子は必ず前のほうの列に配置されます。名簿タブで 👓 を付けた子も自動で対象になります。</div>
-      <div class="row" style="margin-bottom:8px">
+      <div class="hint">
+        名簿タブで 👓 を付けた子が、必ず前のほうの列に配置されます。<br>
+        対象を変えるときは<b>名簿タブで 👓 を付け外し</b>してください。
+      </div>
+      <div class="row" style="margin-bottom:10px">
         前から <input type="number" id="vision-rows" min="1" max="6" value="2" onchange="save()"> 列目までを「前の席」とする
       </div>
-      <div class="row" style="margin-bottom:8px">
-        <select id="vision-sel"></select>
-        <button class="btn sm primary" onclick="addVision()">＋ 追加</button>
-      </div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:5px">いまの対象</div>
       <div id="vision-list"></div>
     </div>
     <div class="card">
@@ -1341,32 +1341,39 @@ function toggleFlag(i,key){
   if(!S.flags[n])S.flags[n]={};
   S.flags[n][key]=!S.flags[n][key];
   if(!S.flags[n][key])delete S.flags[n][key];
-  sndClick(); renderNumList(); renderSeats(); save();
+  sndClick(); renderNumList(); renderSeats(); updateSelects(); renderVision(); save();
 }
 
 /* =========================================================
    配慮設定
    ========================================================= */
+/* 名簿タブで 👓 を付けた児童 */
+function eyeStudents(){
+  return S.students.filter(function(n){ return S.flags[n]&&S.flags[n].vision; });
+}
 function updateSelects(){
-  ['vision-sel','sep-a','sep-b'].forEach(function(x){
+  ['sep-a','sep-b'].forEach(function(x){
     var el=id(x); if(!el)return;
     var cur=el.value;
     el.innerHTML=S.students.map(function(n){return '<option>'+esc(n)+'</option>';}).join('');
     if(S.students.indexOf(cur)>=0)el.value=cur;
   });
 }
-function addVision(){
-  var n=id('vision-sel').value;
-  if(n&&S.vision.indexOf(n)<0){S.vision.push(n);sndSelect();renderVision();save();}
-}
-function removeVision(n){
-  S.vision=S.vision.filter(function(x){return x!==n;});
-  sndDelete(); renderVision(); save();
+/* 視力配慮の対象は名簿タブの 👓 だけで決める。
+   古い保存データで手動登録されていた子は、👓 に移し替える。 */
+function migrateVision(){
+  (S.vision||[]).forEach(function(n){
+    if(S.students.indexOf(n)<0)return;          // 名簿にいない子は捨てる
+    if(!S.flags[n])S.flags[n]={};
+    S.flags[n].vision=true;
+  });
+  S.vision=[];
 }
 function renderVision(){
-  id('vision-list').innerHTML=S.vision.map(function(n){
-    return '<span class="tag tag-o">👓 '+esc(n)+' <button onclick="removeVision(\''+esc(n).replace(/'/g,"\\'")+'\')">×</button></span>';
-  }).join('')||'<span style="font-size:12px;color:var(--sub)">まだ登録がありません</span>';
+  var eye=eyeStudents();
+  id('vision-list').innerHTML = eye.length
+    ? eye.map(function(n){ return '<span class="tag tag-o">👓 '+esc(n)+'</span>'; }).join('')
+    : '<span style="font-size:12px;color:var(--sub)">まだ対象がいません。名簿タブで 👓 を付けてください。</span>';
 }
 /* 古い保存データは [a,b] の形なので、既定の2マスを補う */
 function normalizeSeps(){
@@ -2208,7 +2215,7 @@ function renderOboDots(){
    起動
    ========================================================= */
 function applyAllFromState(){
-  normalizeSeps();
+  normalizeSeps(); migrateVision();
   document.body.dataset.theme=S.theme||'default';
   document.body.dataset.font=S.font||'maru';
   id('in-rows').value=S.rows; id('in-cols').value=S.cols;
