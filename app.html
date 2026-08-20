@@ -1,0 +1,2512 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>せきがえメーカー</title>
+<style>
+/* ===== テーマ ===== */
+:root{
+  --bg:#f6f3ff; --card:#ffffff; --text:#3a3450; --sub:#8b83a8;
+  --line:#e7e0ff; --accent:#7c5cff; --accent-d:#5f42d6; --accent-l:#efeaff;
+  --pink:#ff8fb1; --warn:#fd7272; --ok:#3fc38a;
+  --head:linear-gradient(135deg,#7c5cff,#b18cff 55%,#ff8fb1);
+}
+body[data-theme="ocean"]{ --bg:#eff8ff; --line:#d5ecff; --accent:#2b9adb; --accent-d:#1d76ad; --accent-l:#e2f2fd; --pink:#4fc3d9; --head:linear-gradient(135deg,#2b9adb,#5bc8e8 55%,#8fe3d5); }
+body[data-theme="forest"]{ --bg:#f1faf1; --line:#d7eed7; --accent:#3f9e5c; --accent-d:#2d7844; --accent-l:#e4f5e7; --pink:#8fcf6a; --head:linear-gradient(135deg,#3f9e5c,#72c47c 55%,#c3e08a); }
+body[data-theme="sunset"]{ --bg:#fff6ef; --line:#ffe2cf; --accent:#f08236; --accent-d:#c9631d; --accent-l:#ffeede; --pink:#ff9f68; --head:linear-gradient(135deg,#f08236,#ffa95e 55%,#ffd08a); }
+body[data-theme="sakura"]{ --bg:#fff5f8; --line:#ffdfe8; --accent:#e46493; --accent-d:#bd456f; --accent-l:#ffe9f0; --pink:#ffa7c4; --head:linear-gradient(135deg,#e46493,#ff9dbd 55%,#ffd0c2); }
+
+/* ===== フォント ===== */
+body[data-font="maru"]  { --ff:"Rounded Mplus 1c","Hiragino Maru Gothic ProN","BIZ UDPGothic","Yu Gothic UI",sans-serif; }
+body[data-font="gothic"]{ --ff:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif; }
+body[data-font="mincho"]{ --ff:"Hiragino Mincho ProN","Yu Mincho","MS PMincho",serif; }
+body[data-font="kyoka"] { --ff:"UD デジタル教科書体 NP-R","UD Digi Kyokasho NP-R","Yu Kyokasho","Hiragino Mincho ProN",serif; }
+body[data-font="pop"]   { --ff:"HGP創英角ﾎﾟｯﾌﾟ体","Arial Rounded MT Bold","Hiragino Maru Gothic ProN",sans-serif; }
+body[data-font="tegaki"]{ --ff:"Yu Gothic UI","Comic Sans MS","Hiragino Maru Gothic ProN",cursive; }
+body[data-font="futo"]  { --ff:"Hiragino Sans W6","Yu Gothic UI","Meiryo",sans-serif; }
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--ff); background:var(--bg); color:var(--text);
+  font-size:14px; line-height:1.6; overscroll-behavior:none;
+}
+.screen{display:none}
+.screen.on{display:block}
+
+/* ===== ヘッダ ===== */
+header{
+  background:var(--head); color:#fff; padding:10px 14px;
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  position:sticky; top:0; z-index:50; box-shadow:0 2px 12px rgba(0,0,0,.12);
+}
+header h1{font-size:19px;margin:0;letter-spacing:.04em;text-shadow:0 2px 6px rgba(0,0,0,.18)}
+header .spacer{flex:1}
+.round-badge{
+  background:rgba(255,255,255,.25); border:1.5px solid rgba(255,255,255,.5);
+  border-radius:999px; padding:3px 12px; font-size:12px; font-weight:700;
+}
+.save-ind{font-size:11px;opacity:.85;min-width:74px;text-align:right}
+.save-ind.saving{opacity:1}
+.save-ind.saved{opacity:1}
+
+/* ===== タブ ===== */
+nav.tabs{
+  display:flex; gap:4px; padding:8px 10px 0; background:var(--bg);
+  position:sticky; top:47px; z-index:40; overflow-x:auto; border-bottom:2px solid var(--line);
+}
+nav.tabs button{
+  flex:0 0 auto; border:none; background:transparent; color:var(--sub);
+  font-family:inherit; font-size:13px; font-weight:700; padding:8px 13px;
+  border-radius:12px 12px 0 0; cursor:pointer; white-space:nowrap;
+}
+nav.tabs button.on{background:var(--card);color:var(--accent);box-shadow:0 -2px 8px rgba(0,0,0,.05)}
+
+.pane{display:none;padding:12px 10px 90px;max-width:1100px;margin:0 auto}
+.pane.on{display:block}
+
+.card{
+  background:var(--card); border:1.5px solid var(--line); border-radius:16px;
+  padding:12px 14px; margin-bottom:12px; box-shadow:0 2px 8px rgba(90,70,160,.05);
+}
+.card h2{font-size:14px;margin:0 0 8px;color:var(--accent-d);display:flex;align-items:center;gap:6px}
+.card .hint{font-size:11.5px;color:var(--sub);margin:-2px 0 8px}
+
+/* ===== 部品 ===== */
+button.btn{
+  font-family:inherit; font-size:13px; font-weight:700; cursor:pointer;
+  border:1.5px solid var(--line); background:#fff; color:var(--text);
+  border-radius:14px; padding:7px 14px; transition:.12s;
+}
+button.btn:hover{border-color:var(--accent);color:var(--accent)}
+button.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.btn.primary:hover{background:var(--accent-d);border-color:var(--accent-d);color:#fff}
+button.btn.danger{background:#fff;border-color:#ffd0d0;color:var(--warn)}
+button.btn.danger:hover{background:var(--warn);color:#fff;border-color:var(--warn)}
+button.btn.sm{font-size:11.5px;padding:5px 11px;border-radius:12px}
+button.btn.big{font-size:16px;padding:12px 26px;border-radius:18px}
+button.btn:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=text],input[type=number],select,textarea{
+  font-family:inherit;font-size:13px;color:var(--text);
+  border:1.5px solid var(--line);border-radius:12px;padding:6px 10px;background:#fff;
+}
+textarea{width:100%;min-height:150px;line-height:1.9;resize:vertical}
+input[type=number]{width:64px}
+label.ck{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;cursor:pointer}
+.tag{
+  display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;
+  border-radius:999px;padding:3px 10px;margin:0 5px 5px 0;
+}
+.tag-o{background:#fff4d6;color:#8a6a00;border:1.5px solid #ffe19a}
+.tag-r{background:#ffe6e6;color:#a13030;border:1.5px solid #ffc4c4}
+.tag button{background:none;border:none;cursor:pointer;color:inherit;font-size:13px;padding:0;line-height:1}
+/* 離す組み合わせの一覧（上にあるほど優先） */
+.sep-row{
+  display:flex;align-items:center;gap:7px;padding:6px 8px;margin-bottom:5px;
+  background:#fff;border:1.5px solid var(--line);border-radius:12px;font-size:13px;
+}
+.sep-no{
+  flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;
+  font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;
+}
+.sep-row .nm{flex:1;font-weight:700;min-width:0;word-break:break-all}
+.sep-row .dist{
+  flex:0 0 auto;background:#ffe6e6;color:#a13030;border:1.5px solid #ffc4c4;
+  border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:700;white-space:nowrap;
+}
+.sep-row .dist.near{background:#e4f7ea;color:#1f6b3a;border-color:#a8dfbc}
+.sep-row .mv{
+  flex:0 0 auto;width:26px;height:26px;padding:0;font-size:12px;border-radius:8px;
+  border:1.5px solid var(--line);background:#fff;color:var(--text);cursor:pointer;font-family:inherit;
+}
+.sep-row .mv:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.sep-row .mv:disabled{opacity:.25;cursor:default}
+.sep-row .del{
+  flex:0 0 auto;width:26px;height:26px;padding:0;font-size:13px;border-radius:8px;
+  border:1.5px solid #ffd0d0;background:#fff;color:var(--warn);cursor:pointer;font-family:inherit;
+}
+.sep-row .del:hover{background:var(--warn);color:#fff}
+.empty-state{text-align:center;color:var(--sub);padding:26px 10px;font-size:13px}
+.empty-state .ico{font-size:34px;display:block;margin-bottom:6px;opacity:.6}
+
+/* ===== 教室（床） ===== */
+.room{
+  background-color:#e8d5b0;
+  background-image:
+    repeating-linear-gradient(92deg,
+      transparent 0px, transparent 18px,
+      rgba(180,130,70,.12) 18px, rgba(180,130,70,.12) 20px,
+      transparent 20px, transparent 44px,
+      rgba(160,110,50,.08) 44px, rgba(160,110,50,.08) 47px,
+      transparent 47px, transparent 70px,
+      rgba(190,145,80,.10) 70px, rgba(190,145,80,.10) 72px),
+    repeating-linear-gradient(88deg,
+      transparent 0px, transparent 60px,
+      rgba(150,100,40,.05) 60px, rgba(150,100,40,.05) 62px);
+  border:3px solid #c4a060; border-radius:14px; padding:10px;
+  overflow:auto; -webkit-overflow-scrolling:touch;
+  box-shadow:inset 0 0 20px rgba(120,80,20,.08);
+}
+.room-inner{
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+  min-width:fit-content; transform-origin:top center; transition:transform .15s;
+}
+.seat-row{display:flex; gap:5px}
+.bb{display:block; margin-bottom:6px}
+
+/* 机（130×110のマス） */
+.cellbox{width:130px;height:110px;position:relative;flex:0 0 auto;cursor:pointer}
+.cellbox.empty{
+  border:2px dashed #b0d0f0; background:#ddeeff; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  color:#6090c0; font-size:24px; transition:.15s;
+}
+.cellbox.empty:hover{border-color:#45b7d1;background:#c8eeff;transform:scale(1.06)}
+.cellbox.seat{transition:transform .15s, filter .15s}
+.cellbox.seat:hover{transform:scale(1.06) translateY(-2px);filter:drop-shadow(0 4px 8px rgba(200,140,60,.45))}
+.dsvg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible}
+/* 天板の色（下にある指定ほど優先される） */
+.dtop{fill:#f5d98a;transition:fill .2s}
+.cellbox.has-name .dtop{fill:#cce8ff}
+.cellbox.vrow    .dtop{fill:#ffe066}
+.cellbox[data-g="1"] .dtop{fill:#ffb3b3}
+.cellbox[data-g="2"] .dtop{fill:#ffd280}
+.cellbox[data-g="3"] .dtop{fill:#e8e07a}
+.cellbox[data-g="4"] .dtop{fill:#9adfa0}
+.cellbox[data-g="5"] .dtop{fill:#8ed3ec}
+.cellbox[data-g="6"] .dtop{fill:#b0a5f0}
+.cellbox[data-g="7"] .dtop{fill:#eba6dc}
+.cellbox[data-g="8"] .dtop{fill:#cfcfcf}
+/* 男女設定モード中は、天板の色でパターンが一目で分かるようにする */
+.cellbox.sexmode[data-s="m"] .dtop{fill:#bfe0ff}
+.cellbox.sexmode[data-s="f"] .dtop{fill:#ffd2e4}
+.cellbox.blank   .dtop{fill:#f5d98a}
+.cellbox.hi      .dtop{fill:#fff5c2}
+.cellbox.hi{filter:drop-shadow(0 0 7px #ffd93d)}
+.cellbox.delmode .dtop{fill:#ffcccc}
+.cellbox.delmode{animation:delshake .45s}
+@keyframes delshake{0%,100%{transform:rotate(0)}25%{transform:rotate(-2deg)}75%{transform:rotate(2deg)}}
+/* 机の上の文字（向きに合わせて位置を変える） */
+.dnum,.dname,.dflags{position:absolute;z-index:3;text-align:center;pointer-events:none;line-height:1}
+.dnum{font-size:15px;font-weight:700;color:#7a5000}
+.dname{font-size:22px;font-weight:700;color:#3a2000;word-break:break-all;line-height:1.15}
+.dname.blank{color:rgba(122,80,0,.35);font-weight:400;font-size:15px}
+.dflags{font-size:12px;letter-spacing:1px}
+.cellbox[data-f="up"]    .dnum{top:6px;left:0;right:0}
+.cellbox[data-f="up"]    .dflags{top:24px;left:0;right:0}
+.cellbox[data-f="up"]    .dname{top:42px;left:0;right:0}
+.cellbox[data-f="down"]  .dnum{top:36px;left:0;right:0}
+.cellbox[data-f="down"]  .dflags{top:54px;left:0;right:0}
+.cellbox[data-f="down"]  .dname{top:72px;left:0;right:0}
+.cellbox[data-f="left"]  .dnum{top:20px;left:20px;right:47px}
+.cellbox[data-f="left"]  .dflags{top:38px;left:20px;right:47px}
+.cellbox[data-f="left"]  .dname{top:56px;left:20px;right:47px}
+.cellbox[data-f="right"] .dnum{top:20px;left:47px;right:20px}
+.cellbox[data-f="right"] .dflags{top:38px;left:47px;right:20px}
+.cellbox[data-f="right"] .dname{top:56px;left:47px;right:20px}
+/* 男女のしるし */
+.dsex{
+  position:absolute;z-index:4;width:19px;height:19px;border-radius:50%;
+  font-size:11px;font-weight:700;color:#fff;pointer-events:none;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);border:1.5px solid rgba(255,255,255,.8);
+}
+.dsex.m{background:#3d86cc}
+.dsex.f{background:#e05a92}
+.cellbox[data-f="up"]    .dsex{top:5px;left:5px}
+.cellbox[data-f="down"]  .dsex{top:86px;left:5px}
+.cellbox[data-f="left"]  .dsex{top:5px;left:22px}
+.cellbox[data-f="right"] .dsex{top:5px;left:48px}
+/* 名簿の男女ボタン */
+.sexbtn{
+  cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--sub);
+  border-radius:8px;font-size:10.5px;font-weight:700;padding:1px 5px;line-height:1.5;
+  font-family:inherit;
+}
+.sexbtn.m.on{background:#3d86cc;border-color:#3d86cc;color:#fff}
+.sexbtn.f.on{background:#e05a92;border-color:#e05a92;color:#fff}
+/* 統計・履歴で使う小さな黒板 */
+.board{
+  background:#2f5d4a;color:#fff;text-align:center;border-radius:8px;
+  padding:6px;font-size:12px;font-weight:700;letter-spacing:.5em;
+  margin:0 auto 14px;max-width:70%;box-shadow:0 3px 0 #24483a;
+}
+
+.mode-bar{
+  display:none;align-items:center;gap:8px;flex-wrap:wrap;
+  background:var(--accent-l);border:1.5px solid var(--accent);border-radius:14px;
+  padding:8px 12px;margin-bottom:10px;font-size:12px;font-weight:700;color:var(--accent-d);
+}
+.mode-bar.on{display:flex}
+.gcolor{width:26px;height:26px;border-radius:8px;border:2px solid #fff;cursor:pointer;box-shadow:0 0 0 1.5px var(--line)}
+.gcolor.on{box-shadow:0 0 0 3px var(--accent)}
+
+/* ===== 児童番号リスト ===== */
+.num-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.num-chip{
+  display:flex;align-items:center;gap:5px;background:#fff;border:1.5px solid var(--line);
+  border-radius:12px;padding:4px 9px;font-size:12.5px;
+}
+.num-chip .n{color:var(--sub);font-size:11px;font-weight:700;min-width:16px;text-align:right}
+.num-chip .f{cursor:pointer;font-size:13px;opacity:.25;line-height:1}
+.num-chip .f.on{opacity:1}
+
+/* ===== ポップアップ ===== */
+.overlay{
+  display:none;position:fixed;inset:0;background:rgba(40,30,70,.5);
+  z-index:200;align-items:center;justify-content:center;padding:16px;
+}
+.overlay.on{display:flex}
+.modal{
+  background:var(--card);border-radius:20px;padding:16px;max-width:460px;width:100%;
+  max-height:82vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.3);
+}
+.modal h3{margin:0 0 10px;font-size:15px;color:var(--accent-d)}
+.pick-list{display:flex;flex-wrap:wrap;gap:6px}
+.pick-list button{
+  font-family:inherit;font-size:13px;border:1.5px solid var(--line);background:#fff;
+  border-radius:12px;padding:6px 12px;cursor:pointer;color:var(--text);
+}
+.pick-list button:hover{border-color:var(--accent);background:var(--accent-l)}
+/* パスワード入力 */
+.pin-dots{display:flex;gap:12px;justify-content:center;margin:14px 0 8px}
+.pin-dot{
+  width:16px;height:16px;border-radius:50%;border:2px solid var(--line);background:#fff;transition:.12s;
+}
+.pin-dot.on{background:var(--accent);border-color:var(--accent);transform:scale(1.12)}
+.pin-msg{text-align:center;font-size:12px;font-weight:700;color:var(--warn);min-height:1.4em}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:250px;margin:8px auto 0}
+.pin-key{
+  font-family:inherit;font-size:20px;font-weight:700;color:var(--text);
+  border:1.5px solid var(--line);background:#fff;border-radius:14px;
+  padding:12px 0;cursor:pointer;transition:.1s;
+}
+.pin-key:hover{background:var(--accent-l);border-color:var(--accent);color:var(--accent-d)}
+.pin-key:active{transform:scale(.94)}
+.pin-shake{animation:pinshake .35s}
+@keyframes pinshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}60%{transform:translateX(7px)}}
+
+/* ===== 統計 ===== */
+table.heat{border-collapse:collapse;font-size:11px}
+table.heat th,table.heat td{border:1px solid var(--line);padding:3px 5px;text-align:center;min-width:26px}
+table.heat th{background:var(--accent-l);color:var(--accent-d);position:sticky;left:0}
+table.heat thead th{top:0;z-index:2}
+.rank-row{display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid var(--line);font-size:13px}
+.rank-row .no{font-weight:700;color:var(--accent);min-width:26px}
+.rank-row .bar{height:8px;background:var(--accent);border-radius:4px;min-width:3px}
+.never-grid{display:flex;flex-wrap:wrap;gap:5px}
+.never-chip{background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:3px 8px;font-size:12px}
+
+/* ===== 履歴 ===== */
+.hist-row{
+  display:flex;align-items:center;gap:8px;padding:8px;border:1.5px solid var(--line);
+  border-radius:12px;margin-bottom:6px;background:#fff;font-size:12.5px;
+}
+.hist-row .d{flex:1;color:var(--sub)}
+
+/* ===== 子ども画面 ===== */
+#scr-k{background:var(--head);min-height:100vh;color:#fff;overflow-x:hidden}
+.k-head{display:flex;align-items:center;gap:10px;padding:8px 12px}
+.k-head .t{font-size:16px;font-weight:700;text-shadow:0 2px 6px rgba(0,0,0,.25)}
+.k-head .spacer{flex:1}
+.k-body{padding:10px 12px 40px;text-align:center}
+.k-panel{display:none}
+.k-panel.on{display:block}
+.k-big{font-size:clamp(28px,9vw,64px);font-weight:700;text-shadow:0 4px 16px rgba(0,0,0,.3);margin:18px 0}
+.k-cd-num{font-size:clamp(80px,28vw,220px);font-weight:700;line-height:1;text-shadow:0 8px 30px rgba(0,0,0,.35);animation:cdpop .8s ease-out}
+@keyframes cdpop{0%{transform:scale(.3);opacity:0}45%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
+.k-roulette{
+  background:rgba(255,255,255,.95);color:var(--accent-d);border-radius:22px;
+  padding:22px 16px;margin:14px auto;max-width:460px;box-shadow:0 10px 34px rgba(0,0,0,.25);
+}
+.k-roulette .nm{font-size:clamp(26px,8vw,52px);font-weight:700;line-height:1.2;min-height:1.2em}
+.k-seatno{font-size:clamp(34px,11vw,80px);font-weight:700;color:var(--accent)}
+.k-btn{
+  font-family:inherit;font-size:17px;font-weight:700;border:none;cursor:pointer;
+  background:#fff;color:var(--accent-d);border-radius:999px;padding:13px 34px;
+  box-shadow:0 6px 18px rgba(0,0,0,.22);margin:6px;transition:.12s;
+}
+.k-btn:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(0,0,0,.28)}
+.k-btn.ghost{background:rgba(255,255,255,.2);color:#fff;border:2px solid rgba(255,255,255,.6);box-shadow:none}
+.k-room{max-width:100%;margin:0 auto}
+/* 発表前の机は名前を隠す（机そのものは見えている） */
+.cellbox.veil .dname{color:transparent}
+.cellbox.pop{animation:deskpop .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes deskpop{0%{transform:scale(.5) rotate(-8deg)}70%{transform:scale(1.15) rotate(3deg)}100%{transform:scale(1) rotate(0)}}
+.obo-dots{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:10px auto;max-width:420px}
+.obo-dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.35)}
+.obo-dot.done{background:#fff}
+.obo-dot.current{background:#ffd93d;transform:scale(1.35)}
+.sparkle{position:fixed;pointer-events:none;font-size:16px;z-index:300;animation:spk .8s ease-out forwards}
+@keyframes spk{0%{opacity:1;transform:translate(0,0) scale(.5)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.3)}}
+.zoom-ctl{display:flex;align-items:center;gap:5px}
+.zoom-ctl button{
+  font-family:inherit;border:none;background:rgba(255,255,255,.25);color:#fff;
+  width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:15px;font-weight:700;
+}
+#scr-t .zoom-ctl button{background:var(--accent-l);color:var(--accent-d)}
+
+.fab{
+  position:fixed;right:14px;bottom:14px;z-index:60;
+  background:var(--accent);color:#fff;border:none;border-radius:999px;
+  padding:14px 22px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;
+  box-shadow:0 6px 20px rgba(90,60,200,.4);
+}
+.fab:hover{background:var(--accent-d)}
+@media(max-width:520px){
+  header h1{font-size:16px}
+  .pane{padding:10px 7px 90px}
+}
+</style>
+</head>
+<body data-theme="default" data-font="maru">
+
+<!-- ==================== 先生画面 ==================== -->
+<div id="scr-t" class="screen on">
+  <header>
+    <h1>🪑 せきがえメーカー</h1>
+    <span class="round-badge" id="round-badge">1回目</span>
+    <span class="spacer"></span>
+    <span class="save-ind" id="save-ind">💾 自動保存</span>
+    <button class="btn sm" onclick="toKid()">👦 子ども画面</button>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="on" onclick="tab('seat',this)">🪑 座席</button>
+    <button onclick="tab('roster',this)">📋 名簿</button>
+    <button onclick="tab('care',this)">💡 配慮</button>
+    <button onclick="tab('stat',this)">📊 統計</button>
+    <button onclick="tab('hist',this)">📅 履歴</button>
+    <button onclick="tab('conf',this)">🎨 設定</button>
+  </nav>
+
+  <!-- ---------- 座席タブ ---------- -->
+  <div class="pane on" id="pane-seat">
+    <div class="card">
+      <h2>🪑 座席レイアウト</h2>
+      <div class="hint">プリセットで席数を決めて、あとは空きマスをタップして増減できます。</div>
+      <div class="row" style="margin-bottom:8px">
+        <span style="font-size:12px;font-weight:700">プリセット：</span>
+        <button class="btn sm" onclick="applyPreset(25)">25席</button>
+        <button class="btn sm" onclick="applyPreset(28)">28席</button>
+        <button class="btn sm" onclick="applyPreset(30)">30席</button>
+        <button class="btn sm" onclick="applyPreset(32)">32席</button>
+        <button class="btn sm" onclick="applyPreset(35)">35席</button>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <span style="font-size:12px;font-weight:700">縦</span>
+        <input type="number" id="in-rows" min="1" max="12" value="5" onchange="setSize()">
+        <span style="font-size:12px;font-weight:700">横</span>
+        <input type="number" id="in-cols" min="1" max="12" value="6" onchange="setSize()">
+        <button class="btn sm" onclick="toggleDel()"  id="btn-del">🗑 削除モード</button>
+        <button class="btn sm" onclick="toggleFace()" id="btn-face">🔄 向き変更</button>
+        <button class="btn sm" onclick="toggleGrp()"  id="btn-grp">🎨 班分け</button>
+        <button class="btn sm" onclick="toggleSex()"  id="btn-sex">♂♀ 男女席</button>
+        <button class="btn sm danger" onclick="clearNames()">名前を全消去</button>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <label class="ck"><input type="checkbox" id="ck-kid-groups" onchange="toggleKidGroups()"> 🎨 子ども画面にも班の色を出す</label>
+        <label class="ck"><input type="checkbox" id="ck-show-flags" onchange="toggleShowFlags()"> 💡 配慮フラグを座席表に出す</label>
+        <span style="font-size:11.5px;color:var(--sub)">フラグは子ども画面には出ません</span>
+      </div>
+      <div class="mode-bar" id="bar-del">🗑 削除モード中：席をタップで 空き／席 を切り替えます <button class="btn sm" onclick="toggleDel()">終了</button></div>
+      <div class="mode-bar" id="bar-face">🔄 向き変更中：机をタップするたび 上→右→下→左 と回ります <button class="btn sm" onclick="clearFacing()">全部を上向きに</button><button class="btn sm" onclick="toggleFace()">終了</button></div>
+      <div class="mode-bar" id="bar-grp">
+        🎨 班分け中：色を選んで机をなぞってください
+        <span id="gcolors" style="display:flex;gap:5px"></span>
+        <button class="btn sm" onclick="clearGroups()">班をクリア</button>
+        <button class="btn sm" onclick="toggleGrp()">終了</button>
+      </div>
+      <div class="mode-bar" id="bar-sex" style="flex-direction:column;align-items:stretch;gap:6px">
+        <div class="row">
+          ♂♀ 男女席の設定：塗るものを選んで机をなぞってください
+          <span id="sex-btns" style="display:flex;gap:5px"></span>
+          <button class="btn sm" onclick="toggleSex()">終了</button>
+        </div>
+        <div class="row">
+          <span style="font-size:11.5px">まとめて設定：</span>
+          <button class="btn sm" onclick="sexPattern('alt')">市松（男女交互）</button>
+          <button class="btn sm" onclick="sexPattern('col')">たて列ごと</button>
+          <button class="btn sm" onclick="sexPattern('row')">よこ列ごと</button>
+          <button class="btn sm" onclick="sexPattern('swap')">男女を入れかえ</button>
+          <button class="btn sm" onclick="sexPattern('clear')">全部クリア</button>
+        </div>
+        <div id="sex-stat" style="font-size:11.5px;font-weight:400"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>✨ スマート配置</h2>
+      <div class="hint">これまで隣になっていない子どうしを優先し、配慮の子が同じ班に偏らないように席を決めます。</div>
+      <div class="row">
+        <button class="btn primary big" onclick="runSmart()">✨ スマート配置</button>
+        <button class="btn" onclick="runRandom()">🎲 完全ランダム</button>
+        <label class="ck"><input type="checkbox" id="ck-keep-vision" checked> 視力配慮を守る</label>
+        <label class="ck"><input type="checkbox" id="ck-keep-sep" checked> 組み合わせの指定を守る</label>
+        <label class="ck"><input type="checkbox" id="ck-keep-sex" checked> 男女席を守る</label>
+        <label class="ck"><input type="checkbox" id="ck-keep-sn" checked> 🏫 特別支援を同じ班にしない</label>
+      </div>
+      <div id="smart-status" style="margin-top:8px;font-size:12px;font-weight:700;color:var(--accent-d)"></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <h2 style="margin:0">📐 座席表</h2>
+        <span class="zoom-ctl">
+          <button onclick="tZoom(-0.1)">−</button>
+          <button onclick="tZoom(0)" style="width:auto;padding:0 10px;border-radius:14px;font-size:11px">リセット</button>
+          <button onclick="tZoom(0.1)">＋</button>
+        </span>
+      </div>
+      <div class="room" id="seat-wrap"><div class="room-inner" id="seat-grid"></div></div>
+      <div id="seat-stat" style="text-align:center;font-size:12px;color:var(--sub);margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- ---------- 名簿タブ ---------- -->
+  <div class="pane" id="pane-roster">
+    <div class="card">
+      <h2>📋 名簿</h2>
+      <div class="hint">1行に1人ずつ貼り付けてください。上から順に出席番号1番、2番…になります。</div>
+      <textarea id="roster-ta" placeholder="田中&#10;鈴木&#10;佐藤&#10;…" oninput="onRoster()"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn sm" onclick="loadSample()">サンプル30人</button>
+        <button class="btn sm danger" onclick="clearRoster()">名簿をクリア</button>
+        <span id="roster-stat" style="font-size:12px;color:var(--sub)"></span>
+      </div>
+    </div>
+    <div class="card" id="num-card" style="display:none">
+      <h2>🔢 出席番号・男女・フラグ</h2>
+      <div class="hint">「男」「女」をタップすると性別が決まり、座席タブの男女席の指定に使われます。<br>
+        絵文字をタップするとフラグが付き、スマート配置で同じ班に偏らないよう分散します。</div>
+      <div class="row" style="font-size:11.5px;color:var(--sub);gap:12px">
+        <span id="flag-legend"></span>
+      </div>
+      <div class="num-list" id="num-list"></div>
+    </div>
+  </div>
+
+  <!-- ---------- 配慮タブ ---------- -->
+  <div class="pane" id="pane-care">
+    <div class="card">
+      <h2>👓 視力配慮（前の席にする）</h2>
+      <div class="hint">
+        名簿タブで 👓 を付けた子が、必ず前のほうの列に配置されます。<br>
+        対象を変えるときは<b>名簿タブで 👓 を付け外し</b>してください。
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        前から <input type="number" id="vision-rows" min="1" max="6" value="2" onchange="save()"> 列目までを「前の席」とする
+      </div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:5px">いまの対象</div>
+      <div id="vision-list"></div>
+    </div>
+    <div class="card">
+      <h2>↔️ 席の組み合わせ（離す・近づける）</h2>
+      <div class="hint">
+        えらんだ児童どうしを、はなして置くか、近づけて置くかを指定できます。<b>3人以上のグループも作れます。</b><br>
+        <b>たて・よこに何マス動けば着くかで数えます。</b>
+        前後左右のとなりが1マス、ななめは「たて1＋よこ1」で2マスです。<br>
+        グループの場合は<b>全員がおたがいに</b>その距離になるようにします。<br>
+        全部は満たせないことがあります。<b>▲▼で並べかえると、上にあるものから優先して守ります。</b>
+      </div>
+      <div class="row" style="margin-bottom:6px">
+        <select id="sep-a"></select>
+        <button class="btn sm" onclick="addSepMember()">＋ メンバー</button>
+        <button class="btn sm" onclick="clearSepDraft()">クリア</button>
+      </div>
+      <div id="sep-members" style="margin-bottom:8px"></div>
+      <div class="row" style="margin-bottom:10px">
+        <span>を</span>
+        <select id="sep-kind" onchange="renderSepDistOptions()">
+          <option value="far">↔️ はなす</option>
+          <option value="near">🤝 近づける</option>
+        </select>
+        <select id="sep-d"></select>
+        <button class="btn sm primary" id="sep-register" onclick="addSep()">この組を登録</button>
+      </div>
+      <div id="sep-list"></div>
+    <div class="card">
+      <h2>✅ フラグの分散チェック</h2>
+      <div class="hint">今の座席表で、フラグの子が同じ班に偏っていないか確認します。<br>班分けの色を塗ってあればその班、塗っていなければ2×2のまとまりを班とみなします。</div>
+      <button class="btn sm" onclick="renderFlagCheck()">チェックする</button>
+      <div id="flag-check" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- ---------- 統計タブ ---------- -->
+  <div class="pane" id="pane-stat">
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn sm on" id="stb-rank"  onclick="statTab('rank')">🏆 隣になった回数</button>
+        <button class="btn sm" id="stb-heat"  onclick="statTab('heat')">🔥 相性マップ</button>
+        <button class="btn sm" id="stb-never" onclick="statTab('never')">🌱 まだ隣でない子</button>
+        <button class="btn sm" id="stb-seat"  onclick="statTab('seat')">🪑 座席の使用回数</button>
+        <span class="spacer" style="flex:1"></span>
+        <button class="btn sm danger" onclick="clearStats()">統計リセット</button>
+      </div>
+      <div id="stat-empty" class="empty-state"><span class="ico">📊</span>席替えを実行すると統計が表示されます</div>
+      <div id="stat-body" style="display:none">
+        <div id="sp-rank"></div>
+        <div id="sp-heat" style="display:none;overflow:auto"></div>
+        <div id="sp-never" style="display:none"></div>
+        <div id="sp-seat" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- 履歴タブ ---------- -->
+  <div class="pane" id="pane-hist">
+    <div class="card">
+      <h2>📅 席替えの履歴</h2>
+      <div class="hint">最新100件まで保存します。「もどす」でその時の座席表を復元できます。</div>
+      <div id="hist-list"></div>
+    </div>
+  </div>
+
+  <!-- ---------- 設定タブ ---------- -->
+  <div class="pane" id="pane-conf">
+    <div class="card">
+      <h2>🔤 フォント</h2>
+      <div class="row" id="font-btns"></div>
+      <div id="font-preview" style="margin-top:10px;padding:10px 14px;background:var(--accent-l);border-radius:12px;font-size:18px">あいうえお 田中さん 1組</div>
+    </div>
+    <div class="card">
+      <h2>🎨 テーマカラー</h2>
+      <div class="row" id="theme-btns"></div>
+    </div>
+    <div class="card">
+      <h2>🔊 音</h2>
+      <div class="row" style="margin-bottom:8px">
+        <label class="ck"><input type="checkbox" id="chk-sound" checked onchange="save()"> 効果音を鳴らす</label>
+      </div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:6px">発表中のBGM</div>
+      <div class="row" id="bgm-btns"></div>
+    </div>
+    <div class="card">
+      <h2>🔒 先生画面のパスワード</h2>
+      <div class="hint">
+        子ども画面から先生画面にもどるときに、4けたの数字をたずねます。<br>
+        <span id="pin-hint"></span>
+      </div>
+      <div class="row">
+        <input type="password" id="pin-old"  inputmode="numeric" maxlength="4" placeholder="今のパスワード" style="width:130px">
+        <input type="password" id="pin-new1" inputmode="numeric" maxlength="4" placeholder="新しい4けた" style="width:120px">
+        <input type="password" id="pin-new2" inputmode="numeric" maxlength="4" placeholder="もう一度" style="width:110px">
+        <button class="btn sm primary" onclick="changePin()">変更する</button>
+      </div>
+      <div id="pin-result" style="margin-top:8px;font-size:12px"></div>
+    </div>
+    <div class="card">
+      <h2>💾 データの持ち出し</h2>
+      <div class="hint">別の端末に引き継ぐときに使います。書き出したファイルを、移行先で読み込んでください。</div>
+      <div class="row">
+        <button class="btn sm" onclick="exportData()">⬇ 書き出す</button>
+        <button class="btn sm" onclick="document.getElementById('imp-file').click()">⬆ 読み込む</button>
+        <input type="file" id="imp-file" accept=".json" style="display:none" onchange="importData(event)">
+      </div>
+    </div>
+    <div class="card">
+      <h2>⚠️ リセット</h2>
+      <div class="row">
+        <button class="btn sm danger" onclick="resetAll()">すべてのデータを消す</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="fab" onclick="toKid()">👦 子ども画面へ</button>
+</div>
+
+<!-- ==================== 子ども画面 ==================== -->
+<div id="scr-k" class="screen">
+  <div class="k-head">
+    <span class="t">🎉 せきがえタイム</span>
+    <span class="spacer"></span>
+    <span class="zoom-ctl" id="k-zoom" style="display:none">
+      <button onclick="kZoom(-0.1)">−</button>
+      <button onclick="kZoom(0)" style="width:auto;padding:0 10px;border-radius:14px;font-size:11px">戻す</button>
+      <button onclick="kZoom(0.1)">＋</button>
+    </span>
+    <button class="k-btn" style="font-size:12px;padding:6px 14px;margin:0" onclick="toTeacher()">先生画面</button>
+  </div>
+  <div class="k-body">
+
+    <div class="k-panel on" id="k-waiting">
+      <div class="k-big">せきがえ、はじめるよ！</div>
+      <div style="margin-top:20px">
+        <button class="k-btn" onclick="startAll()">🎊 いっせいに発表</button>
+        <button class="k-btn" onclick="startObo()">👤 ひとりずつ発表</button>
+      </div>
+      <div style="margin-top:14px">
+        <button class="k-btn ghost" style="font-size:14px;padding:9px 22px" onclick="kReroll()">🎲 新しい席をつくり直す</button>
+      </div>
+      <div style="margin-top:18px;font-size:13px;opacity:.85;line-height:1.8" id="k-ready-msg"></div>
+    </div>
+
+    <div class="k-panel" id="k-cd">
+      <div class="k-cd-num" id="cd-num">3</div>
+    </div>
+
+    <div class="k-panel" id="k-spin">
+      <div class="k-big" style="font-size:clamp(20px,6vw,36px)">だれの席になるかな…？</div>
+      <div class="k-roulette"><div class="nm" id="spin-name">…</div></div>
+    </div>
+
+    <div class="k-panel" id="k-reveal">
+      <div class="k-big" id="reveal-title" style="font-size:clamp(20px,6vw,38px)">あたらしい席は…！</div>
+      <div class="room k-room" id="rv-wrap"><div class="room-inner" id="rv-grid"></div></div>
+      <div style="margin-top:18px">
+        <button class="k-btn ghost" onclick="resetKid()">もういちど</button>
+      </div>
+    </div>
+
+    <div class="k-panel" id="k-obo">
+      <div class="k-big" id="obo-name" style="font-size:clamp(24px,7vw,46px)">…</div>
+      <div class="k-roulette">
+        <div style="font-size:13px;color:var(--sub);font-weight:700">せきばんごう</div>
+        <div class="k-seatno" id="obo-no">?</div>
+      </div>
+      <div id="obo-btns">
+        <button class="k-btn" id="obo-stop" onclick="oboStop()">🛑 ストップ！</button>
+        <button class="k-btn" id="obo-next" style="display:none" onclick="oboNext()">つぎの人 ▶</button>
+      </div>
+      <div class="obo-dots" id="obo-dots"></div>
+      <div class="room k-room" id="obo-wrap" style="margin-top:14px"><div class="room-inner" id="obo-grid"></div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== ポップアップ ==================== -->
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================
+   状態
+   ========================================================= */
+var GCOLORS=['#ffb3b3','#ffd280','#e8e07a','#9adfa0','#8ed3ec','#b0a5f0','#eba6dc','#bbbbbb'];
+var FLAGS=[
+  {key:'leader',icon:'✨',label:'リーダー'},
+  {key:'high',  icon:'💯',label:'学力上位'},
+  {key:'low',   icon:'📚',label:'支援が必要'},
+  {key:'care',  icon:'🤝',label:'配慮'},
+  {key:'vision',icon:'👓',label:'視力配慮'},
+  {key:'sn',    icon:'🏫',label:'特別支援学級在籍'}
+];
+var FONTS=[
+  {key:'maru',label:'まるゴシック'},{key:'gothic',label:'ゴシック'},
+  {key:'kyoka',label:'教科書体'},{key:'mincho',label:'明朝'},
+  {key:'pop',label:'ポップ体'},{key:'tegaki',label:'手書き風'},{key:'futo',label:'太ゴシック'}
+];
+var THEMES=[
+  {key:'default',label:'むらさき'},{key:'ocean',label:'オーシャン'},{key:'forest',label:'フォレスト'},
+  {key:'sunset',label:'サンセット'},{key:'sakura',label:'さくら'}
+];
+var BGMS=[
+  {key:'none',label:'なし'},{key:'waku',label:'わくわく'},{key:'matsuri',label:'おまつり'},
+  {key:'jazz',label:'ジャズ'},{key:'yuttari',label:'ゆったり'},{key:'space',label:'うちゅう'}
+];
+
+var S={
+  rows:5, cols:6,
+  cells:{},            // "r_c" -> {on,name,facing,group,sex}
+  students:[],
+  flags:{},            // name -> {leader:true,...}
+  sex:{},              // name -> 'm'（男子）| 'f'（女子）
+  vision:[],           // 名前の配列
+  visionRows:2,
+  seps:[],             // [[a,b,マス数],...] 2人を何マス以上はなすか（となり1・ななめ2）
+  adj:{},              // "a|b"(ソート済) -> 回数
+  seatHist:{},         // name -> {"r_c":回数}
+  rounds:0,
+  history:[],          // {t:日時, a:{seatId:name}}
+  font:'maru', theme:'default', bgm:'none', sound:true,
+  pin:'1234',          // 先生画面にもどるときのパスワード
+  screen:'t',          // 最後に開いていた画面（'t'=先生 'k'=子ども）
+  kidGroups:false,     // 子ども画面にも班の色を出すか
+  keepSN:true,         // 特別支援学級在籍を同じ班にしないか
+  showFlags:false      // 配慮フラグを先生画面の座席表に出すか（子ども画面には出さない）
+};
+var current={};        // 今の配置 {seatId:name}
+var uncommitted=false; // まだ統計に記録していない「新しい配置」かどうか
+var mode='';           // '' | 'del' | 'face' | 'grp' | 'sex'
+var grpColor=1, grpDrag=false, sexPaint='m';
+var tZoomLv=1, kZoomLv=1, tZoomAuto=true, kZoomAuto=true;
+var saveTimer=null;
+var pickTarget=null;
+
+var KEY='sekigae_v1';
+
+/* =========================================================
+   小道具
+   ========================================================= */
+function id(x){return document.getElementById(x);}
+function sid(r,c){return r+'_'+c;}
+function rc(s){var p=s.split('_');return{r:+p[0],c:+p[1]};}
+function cell(r,c){return S.cells[sid(r,c)];}
+function pairKey(a,b){return [a,b].sort().join('|');}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=0|Math.random()*(i+1);var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function esc(s){return String(s).replace(/[&<>"']/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
+
+/* 有効な席のIDを、前列→左から順に返す（＝出席番号順の席番号） */
+function activeSeats(){
+  var out=[];
+  for(var r=0;r<S.rows;r++)for(var c=0;c<S.cols;c++){
+    var x=cell(r,c); if(x&&x.on) out.push(sid(r,c));
+  }
+  return out;
+}
+function seatNo(seatId){return activeSeats().indexOf(seatId)+1;}
+function isFrontRow(r){return r < (S.visionRows||1);}
+function visionSet(){
+  var s={};
+  S.vision.forEach(function(n){s[n]=1;});
+  Object.keys(S.flags).forEach(function(n){ if(S.flags[n]&&S.flags[n].vision) s[n]=1; });
+  return s;
+}
+/* 席どうしの距離。縦横に何マス動けば着くかで数える。
+   となり（前後左右）が1マス、ななめは「縦1＋横1」で2マス。 */
+function seatDist(a,b){
+  var p=rc(a),q=rc(b);
+  return Math.abs(p.r-q.r)+Math.abs(p.c-q.c);
+}
+function isAdjSeat(a,b){
+  var p=rc(a),q=rc(b);
+  return (p.r===q.r&&Math.abs(p.c-q.c)===1)||(p.c===q.c&&Math.abs(p.r-q.r)===1);
+}
+
+/* =========================================================
+   音（WebAudio・外部ファイルなし）
+   ========================================================= */
+var AC=null;
+function ac(){ if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}} return AC; }
+function snd(){return S.sound;}
+function tone(f,d,type,v,delay){
+  if(!snd())return; var a=ac(); if(!a)return;
+  try{
+    var t=a.currentTime+(delay||0);
+    var o=a.createOscillator(),g=a.createGain();
+    o.type=type||'sine'; o.frequency.value=f;
+    o.connect(g); g.connect(a.destination);
+    g.gain.setValueAtTime(v||0.25,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+d);
+    o.start(t); o.stop(t+d+0.02);
+  }catch(e){}
+}
+function noise(v,d){
+  if(!snd())return; var a=ac(); if(!a)return;
+  try{
+    var b=a.createBuffer(1,a.sampleRate*d,a.sampleRate),ch=b.getChannelData(0);
+    for(var i=0;i<ch.length;i++)ch[i]=(Math.random()*2-1)*Math.pow(1-i/ch.length,2);
+    var s=a.createBufferSource(),g=a.createGain();
+    s.buffer=b; s.connect(g); g.connect(a.destination);
+    g.gain.setValueAtTime(v,a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+d);
+    s.start();
+  }catch(e){}
+}
+function sndClick(){tone(700,0.06,'sine',0.13);}
+function sndSelect(){tone(880,0.07,'triangle',0.18);tone(1180,0.09,'sine',0.12,0.03);}
+function sndDelete(){tone(300,0.14,'sawtooth',0.16);}
+function sndTick(){tone(1000,0.04,'square',0.09);}
+function sndFlip(){tone(380+Math.random()*340,0.1,'sine',0.16);}
+function sndStop(){tone(440,0.08,'square',0.16);tone(660,0.12,'triangle',0.24,0.07);tone(880,0.26,'triangle',0.32,0.16);}
+function sndReveal(){tone(660,0.18,'triangle',0.3);tone(880,0.22,'triangle',0.26,0.1);}
+function sndCd(n){ noise(0.3,0.09); tone(n>1?520:760,0.22,'triangle',0.3); }
+function sndFanfare(){
+  var m=[523,659,784,1047,784,1047,1319];
+  m.forEach(function(f,i){ tone(f,i===m.length-1?0.7:0.16,'triangle',0.3,i*0.13); });
+  for(var i=0;i<3;i++) noise(0.16,0.25);
+}
+
+/* --- BGM（短いループを合成） --- */
+var bgmTimer=null;
+var BGMPAT={
+  waku:   {tempo:150,type:'triangle',notes:[523,659,784,659,880,784,659,523]},
+  matsuri:{tempo:135,type:'square',  notes:[587,587,698,784,698,587,523,587]},
+  jazz:   {tempo:190,type:'sine',    notes:[466,554,622,698,622,554,466,392]},
+  yuttari:{tempo:300,type:'sine',    notes:[523,587,659,784,659,587]},
+  space:  {tempo:230,type:'sawtooth',notes:[392,466,523,622,523,466]}
+};
+function bgmStart(){
+  bgmStop();
+  var p=BGMPAT[S.bgm]; if(!p||!snd())return;
+  var i=0;
+  bgmTimer=setInterval(function(){
+    tone(p.notes[i%p.notes.length],p.tempo/1000*0.9,p.type,0.07);
+    if(i%4===0) tone(p.notes[0]/2,p.tempo/1000*1.2,'sine',0.05);
+    i++;
+  },p.tempo);
+}
+function bgmStop(){ if(bgmTimer){clearInterval(bgmTimer);bgmTimer=null;} }
+
+/* =========================================================
+   保存・復元
+   ========================================================= */
+function showSave(st){
+  var el=id('save-ind');
+  if(st==='saving'){el.textContent='💾 保存中…';el.className='save-ind saving';}
+  else if(st==='saved'){el.textContent='✅ 保存しました';el.className='save-ind saved';
+    setTimeout(function(){el.textContent='💾 自動保存';el.className='save-ind';},1600);}
+  else if(st==='loaded'){el.textContent='📂 復元しました';el.className='save-ind saved';
+    setTimeout(function(){el.textContent='💾 自動保存';el.className='save-ind';},2000);}
+}
+function save(){
+  clearTimeout(saveTimer); showSave('saving');
+  S.visionRows=parseInt(id('vision-rows').value)||1;
+  S.sound=id('chk-sound').checked;
+  S.keepSN=id('ck-keep-sn').checked;
+  saveTimer=setTimeout(function(){
+    try{ localStorage.setItem(KEY,JSON.stringify(S)); showSave('saved'); }
+    catch(e){ id('save-ind').textContent='⚠️ 保存できません'; }
+  },500);
+}
+function load(){
+  var raw=null;
+  try{ raw=localStorage.getItem(KEY); }catch(e){}
+  if(!raw) return false;
+  try{
+    var d=JSON.parse(raw);
+    Object.keys(S).forEach(function(k){ if(d[k]!==undefined) S[k]=d[k]; });
+    return true;
+  }catch(e){ return false; }
+}
+
+/* =========================================================
+   画面・タブ切替
+   ========================================================= */
+function tab(name,btn){
+  ['seat','roster','care','stat','hist','conf'].forEach(function(n){
+    id('pane-'+n).classList.toggle('on',n===name);
+  });
+  Array.prototype.forEach.call(id('tabs').children,function(b){b.classList.remove('on');});
+  if(btn)btn.classList.add('on');
+  if(name==='seat')applyTZoom();      // 表示された直後に幅が確定するので合わせ直す
+  if(name==='stat')renderStats();
+  if(name==='hist')renderHistory();
+  sndClick();
+}
+function toKid(){
+  ac()&&ac().resume&&ac().resume();
+  id('scr-t').classList.remove('on'); id('scr-k').classList.add('on');
+  S.screen='k'; save();          // リロードしても子ども画面のままにする
+  resetKid();
+  kReadyMsg();
+}
+function kReadyMsg(){
+  var n=activeSeats().length, m=S.students.length;
+  id('k-ready-msg').innerHTML='座席 '+n+'席 ／ 名簿 '+m+'人<br>'+
+    (uncommitted ? '🆕 新しい席ができています'
+                 : '📌 発表ずみの席です（もう一度出しても記録は増えません）');
+}
+/* 子ども画面から席を作り直す */
+function kReroll(){
+  var mm=makeAssignment(true);
+  if(!mm){ alert('先生画面で座席と名簿を用意してください。'); return; }
+  applyAssignment(mm); uncommitted=true;
+  renderSeats(); kReadyMsg(); sndSelect(); save();
+}
+function toTeacher(){
+  askPin(toTeacherNow);          // パスワードが合ったときだけ切り替える
+}
+function toTeacherNow(){
+  bgmStop(); clearInterval(spinIv); clearInterval(oboIv); oboToken++;
+  id('scr-k').classList.remove('on'); id('scr-t').classList.add('on');
+  S.screen='t'; save();
+  applyTZoom();
+}
+
+/* ---- 先生画面にもどるためのパスワード ---- */
+var pinBuf='', pinThen=null;
+function askPin(onOk){
+  if(!/^\d{4}$/.test(S.pin||'')){ onOk(); return; }   // 未設定なら素通し
+  pinBuf=''; pinThen=onOk;
+  drawPin('');
+  id('overlay').classList.add('on');
+}
+function drawPin(msg){
+  var dots='',i;
+  for(i=0;i<4;i++) dots+='<span class="pin-dot'+(i<pinBuf.length?' on':'')+'"></span>';
+  var keys='';
+  for(i=1;i<=9;i++) keys+='<button class="pin-key" onclick="pinTap(\''+i+'\')">'+i+'</button>';
+  keys+='<button class="pin-key" onclick="pinBack()" title="1文字消す">←</button>'+
+        '<button class="pin-key" onclick="pinTap(\'0\')">0</button>'+
+        '<button class="pin-key" onclick="closeModal()" title="やめる">×</button>';
+  id('modal').innerHTML=
+    '<h3>🔒 先生画面にもどる</h3>'+
+    '<div style="font-size:12px;color:var(--sub);text-align:center">4けたのパスワードを入れてください</div>'+
+    '<div class="pin-dots'+(msg?' pin-shake':'')+'">'+dots+'</div>'+
+    '<div class="pin-msg">'+(msg||'')+'</div>'+
+    '<div class="pin-pad">'+keys+'</div>'+
+    '<div style="text-align:center;margin-top:12px">'+
+      '<button class="btn sm" onclick="pinForgot()" style="font-size:11px">パスワードが分からないとき</button>'+
+    '</div>';
+}
+function pinTap(d){
+  if(pinBuf.length>=4)return;
+  pinBuf+=d; sndClick(); drawPin('');
+  if(pinBuf.length===4) setTimeout(pinCheck,140);
+}
+function pinBack(){ if(pinBuf){ pinBuf=pinBuf.slice(0,-1); drawPin(''); } }
+function pinCheck(){
+  if(pinBuf===S.pin){
+    var f=pinThen; pinThen=null; pinBuf='';
+    id('overlay').classList.remove('on');
+    sndSelect(); if(f)f();
+  }else{
+    pinBuf=''; sndDelete(); drawPin('ちがいます。もう一度入れてください');
+  }
+}
+function pinForgot(){
+  if(!confirm('パスワードが分からないときは、保存されているデータを消すと初期パスワード「1234」に戻ります。\n\n名簿・座席・統計・履歴もすべて消えます。よろしいですか？'))return;
+  if(!confirm('本当に消してよろしいですか？　元に戻せません。\n\n（設定タブの「書き出す」でバックアップしてあれば、あとで読み込めます）'))return;
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  location.reload();
+}
+/* 設定タブでパスワードを変える */
+function changePin(){
+  var o=id('pin-old').value.trim(), a=id('pin-new1').value.trim(), b=id('pin-new2').value.trim();
+  var r=id('pin-result');
+  function ng(m){ r.innerHTML='<span style="color:var(--warn);font-weight:700">⚠️ '+m+'</span>'; sndDelete(); }
+  if(o!==S.pin) return ng('今のパスワードがちがいます。');
+  if(!/^\d{4}$/.test(a)) return ng('新しいパスワードは数字4けたで入れてください。');
+  if(a!==b) return ng('新しいパスワードが一致しません。');
+  S.pin=a;
+  id('pin-old').value=''; id('pin-new1').value=''; id('pin-new2').value='';
+  r.innerHTML='<span style="color:var(--ok);font-weight:700">✅ 変更しました。忘れないようにしてください。</span>';
+  sndSelect(); save(); renderPinHint();
+}
+function renderPinHint(){
+  var el=id('pin-hint'); if(!el)return;
+  el.innerHTML = (S.pin==='1234')
+    ? '<span style="color:var(--warn);font-weight:700">いまは初期パスワード「1234」のままです。変更をおすすめします。</span>'
+    : 'パスワードは設定済みです。';
+}
+
+/* =========================================================
+   座席レイアウト
+   ========================================================= */
+function ensureCells(){
+  for(var r=0;r<S.rows;r++)for(var c=0;c<S.cols;c++){
+    var k=sid(r,c);
+    if(!S.cells[k]) S.cells[k]={on:false,name:'',facing:'up',group:0,sex:''};
+    else if(S.cells[k].sex===undefined) S.cells[k].sex='';   // 旧データの補完
+  }
+  // 範囲外は捨てる
+  Object.keys(S.cells).forEach(function(k){
+    var p=rc(k); if(p.r>=S.rows||p.c>=S.cols) delete S.cells[k];
+  });
+}
+function setSize(){
+  S.rows=Math.max(1,Math.min(12,parseInt(id('in-rows').value)||5));
+  S.cols=Math.max(1,Math.min(12,parseInt(id('in-cols').value)||6));
+  id('in-rows').value=S.rows; id('in-cols').value=S.cols;
+  ensureCells(); renderSeats(); save();
+}
+function applyPreset(n){
+  var placed=activeSeats().filter(function(s){return S.cells[s].name;}).length;
+  if(placed && !confirm('座席を作り直すと、今入っている名前('+placed+'人分)は消えます。よろしいですか？')) return;
+  var cols = n<=25?5:(n<=30?6:(n<=32?6:7));
+  var rows = Math.ceil(n/cols);
+  S.rows=rows; S.cols=cols; S.cells={};
+  ensureCells();
+  var k=0;
+  for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){
+    if(k<n){ S.cells[sid(r,c)]={on:true,name:'',facing:'up',group:0,sex:''}; k++; }
+  }
+  id('in-rows').value=rows; id('in-cols').value=cols;
+  sndSelect(); renderSeats(); save();
+}
+function clearNames(){
+  if(!confirm('全部の席から名前を消しますか？'))return;
+  Object.keys(S.cells).forEach(function(k){S.cells[k].name='';});
+  current={}; sndDelete(); renderSeats(); save();
+}
+function toggleDel(){ setMode(mode==='del'?'':'del'); }
+function toggleFace(){ setMode(mode==='face'?'':'face'); }
+/* 配慮フラグを先生画面の座席表に出すかどうか。既定は出さない。
+   子ども画面には、この設定にかかわらず出さない（renderKGrid に描画自体がない）。 */
+function toggleShowFlags(){
+  S.showFlags=id('ck-show-flags').checked;
+  sndClick(); renderSeats(); save();
+}
+/* 子ども画面にも班の色を出すかどうか。班は児童に見せてよい情報なので任意。
+   発表の途中で切り替えても崩れないよう、描き直さず色だけ付け替える。 */
+function toggleKidGroups(){
+  S.kidGroups=id('ck-kid-groups').checked;
+  sndClick(); save();
+  ['rv-grid','obo-grid'].forEach(function(g){
+    for(var r=0;r<S.rows;r++)for(var c=0;c<S.cols;c++){
+      var x=cell(r,c); if(!x||!x.on)continue;
+      var el=id(g+'-'+sid(r,c));
+      if(el) el.setAttribute('data-g',(S.kidGroups&&x.group)||0);
+    }
+  });
+}
+function toggleGrp(){ setMode(mode==='grp'?'':'grp'); }
+function toggleSex(){ setMode(mode==='sex'?'':'sex'); }
+function setMode(m){
+  mode=m; sndClick();
+  ['del','face','grp','sex'].forEach(function(x){
+    id('bar-'+x).classList.toggle('on',m===x);
+    id('btn-'+x).classList.toggle('primary',m===x);
+  });
+  if(m==='grp')renderGColors();
+  if(m==='sex')renderSexBtns();
+  renderSeats();
+}
+function renderSexBtns(){
+  var opt=[{v:'m',t:'👦 男子席'},{v:'f',t:'👧 女子席'},{v:'',t:'指定なし'}];
+  id('sex-btns').innerHTML=opt.map(function(o){
+    return '<button class="btn sm'+(sexPaint===o.v?' primary':'')+'" onclick="sexPaint=\''+o.v+'\';renderSexBtns()">'+o.t+'</button>';
+  }).join('');
+  renderSexStat();
+}
+/* 席の数と名簿の人数が合っているかを見せる */
+function renderSexStat(){
+  var el=id('sex-stat'); if(!el)return;
+  var sm=0,sf=0,sn=0;
+  activeSeats().forEach(function(s){
+    var v=S.cells[s].sex;
+    if(v==='m')sm++; else if(v==='f')sf++; else sn++;
+  });
+  var pm=0,pf=0,pn=0;
+  S.students.forEach(function(n){
+    var v=S.sex[n];
+    if(v==='m')pm++; else if(v==='f')pf++; else pn++;
+  });
+  var warn='';
+  if(sm>pm+pn) warn+=' ⚠️ 男子席が'+(sm-pm-pn)+'席多すぎます';
+  if(sf>pf+pn) warn+=' ⚠️ 女子席が'+(sf-pf-pn)+'席多すぎます';
+  if(!pm&&!pf) warn+=' ⚠️ 名簿タブで児童の男女を設定してください';
+  el.innerHTML='席：👦'+sm+' ／ 👧'+sf+' ／ 指定なし'+sn+
+    '　　名簿：👦'+pm+' ／ 👧'+pf+(pn?' ／ 未設定'+pn:'')+
+    (warn?'<span style="color:var(--warn);font-weight:700">'+warn+'</span>':'');
+}
+/* まとめて男女パターンを作る */
+function sexPattern(kind){
+  activeSeats().forEach(function(s){
+    var p=rc(s), x=S.cells[s];
+    if(kind==='alt')        x.sex=((p.r+p.c)%2===0)?'m':'f';
+    else if(kind==='col')   x.sex=(p.c%2===0)?'m':'f';
+    else if(kind==='row')   x.sex=(p.r%2===0)?'m':'f';
+    else if(kind==='swap')  x.sex=(x.sex==='m')?'f':(x.sex==='f'?'m':'');
+    else                    x.sex='';
+  });
+  sndSelect(); renderSeats(); renderSexStat(); save();
+}
+function renderGColors(){
+  var h='';
+  for(var i=1;i<=8;i++){
+    h+='<span class="gcolor'+(grpColor===i?' on':'')+'" style="background:'+GCOLORS[i-1]+'" onclick="grpColor='+i+';renderGColors()"></span>';
+  }
+  h+='<span class="gcolor'+(grpColor===0?' on':'')+'" style="background:#fff" onclick="grpColor=0;renderGColors()">✕</span>';
+  id('gcolors').innerHTML=h;
+}
+function clearGroups(){
+  Object.keys(S.cells).forEach(function(k){S.cells[k].group=0;});
+  renderSeats(); save();
+}
+function clearFacing(){
+  Object.keys(S.cells).forEach(function(k){S.cells[k].facing='up';});
+  renderSeats(); save();
+}
+function cycleFacing(r,c){
+  var x=cell(r,c); if(!x)return;
+  var o=['up','right','down','left'];
+  x.facing=o[(o.indexOf(x.facing)+1)%4];
+  sndFlip(); renderSeats(); save();
+}
+function toggleSeat(r,c){
+  var x=cell(r,c); if(!x)return;
+  x.on=!x.on; if(!x.on){x.name='';x.group=0;}
+  x.on?sndSelect():sndDelete();
+  renderSeats(); save();
+}
+/* 班分けモード／男女席モードで、机をなぞって塗る */
+function paintCell(r,c){
+  var x=cell(r,c); if(!x||!x.on)return;
+  if(mode==='grp'){
+    if(x.group===grpColor)return;
+    x.group=grpColor;
+  }else if(mode==='sex'){
+    if(x.sex===sexPaint)return;
+    x.sex=sexPaint;
+  }else return;
+  renderSeats(); renderSexStat();
+}
+
+function flagIcons(name){
+  var f=S.flags[name]; if(!f)return '';
+  return FLAGS.filter(function(x){return f[x.key];}).map(function(x){return x.icon;}).join('');
+}
+/* 黒板（木枠・チョーク受け付き）。列数に合わせて横幅を決める */
+function blackboardSvg(cols){
+  var w=Math.max(340, cols*130+(cols-1)*5), h=80;
+  return '<svg class="bb" viewBox="0 0 '+w+' '+h+'" style="width:'+w+'px;height:'+h+'px">'+
+    '<rect x="0" y="0" width="'+w+'" height="'+h+'" rx="8" fill="#c8922a"/>'+
+    '<rect x="8" y="8" width="'+(w-16)+'" height="'+(h-16)+'" rx="4" fill="#2d6e2d"/>'+
+    '<line x1="8" y1="34" x2="'+(w-8)+'" y2="34" stroke="rgba(255,255,255,.05)" stroke-width="1"/>'+
+    '<line x1="8" y1="52" x2="'+(w-8)+'" y2="52" stroke="rgba(255,255,255,.05)" stroke-width="1"/>'+
+    '<text x="'+(w/2)+'" y="49" text-anchor="middle" fill="rgba(205,240,190,.92)" '+
+      'font-family="sans-serif" font-size="24" font-weight="bold" letter-spacing="8">黒　板</text>'+
+    '<rect x="8" y="'+(h-12)+'" width="'+(w-16)+'" height="6" rx="2" fill="#b07820"/>'+
+    '<rect x="18" y="'+(h-11)+'" width="24" height="4" rx="2" fill="#f0f0f0"/>'+
+    '<rect x="48" y="'+(h-11)+'" width="18" height="4" rx="2" fill="#ffd93d"/>'+
+    '</svg>';
+}
+/* 机。130×110のキャンバスに、木の天板＋前板＋金属の脚を描く。
+   向きは中心まわりに回転させ、横向きは高さに収まるよう縮小する。 */
+var DESK_BODY=
+  '<rect x="12" y="86" width="9" height="21" rx="3" fill="#d0d0d0" stroke="#a0a0a0" stroke-width="1"/>'+
+  '<rect x="109" y="86" width="9" height="21" rx="3" fill="#d0d0d0" stroke="#a0a0a0" stroke-width="1"/>'+
+  '<rect x="13" y="90" width="104" height="9" rx="2" fill="#e0e0e0" stroke="#b0b0b0" stroke-width="1"/>'+
+  '<rect x="0" y="76" width="130" height="11" rx="3" fill="#c9903a"/>'+
+  '<rect x="1" y="1" width="128" height="77" rx="7" fill="#f5d98a" stroke="#b8935a" stroke-width="2" class="dtop"/>'+
+  '<rect x="7" y="6" width="116" height="14" rx="7" fill="rgba(255,255,255,.34)"/>';
+function deskSvg(facing){
+  var tf='';
+  if(facing==='down')       tf='rotate(180 65 55)';
+  else if(facing==='right') tf='translate(65,55) rotate(90) scale(.846) translate(-65,-55)';
+  else if(facing==='left')  tf='translate(65,55) rotate(-90) scale(.846) translate(-65,-55)';
+  return '<svg class="dsvg" viewBox="0 0 130 110">'+
+    (tf?'<g transform="'+tf+'">'+DESK_BODY+'</g>':DESK_BODY)+'</svg>';
+}
+function nameFont(nm){ return nm.length<=3?22:(nm.length<=5?17:(nm.length<=7?14:12)); }
+function sexMark(v){
+  if(v!=='m'&&v!=='f') return '';
+  return '<div class="dsex '+v+'">'+(v==='m'?'男':'女')+'</div>';
+}
+
+function renderSeats(){
+  ensureCells();
+  var h=blackboardSvg(S.cols), n=0;
+  for(var r=0;r<S.rows;r++){
+    h+='<div class="seat-row">';
+    for(var c=0;c<S.cols;c++){
+      var x=cell(r,c);
+      if(!x||!x.on){
+        h+='<div class="cellbox empty" onclick="slotClick('+r+','+c+')">＋</div>';
+        continue;
+      }
+      n++;
+      var nm=x.name||'';
+      var cls='cellbox seat';
+      if(nm) cls+=' has-name';
+      if(isFrontRow(r)) cls+=' vrow';
+      if(mode==='del') cls+=' delmode';
+      if(mode==='sex') cls+=' sexmode';
+      h+='<div class="'+cls+'" data-f="'+x.facing+'" data-g="'+(x.group||0)+'" data-s="'+(x.sex||'')+'"'+
+         ' onclick="deskClick('+r+','+c+')"'+
+         ' onmousedown="grpDown('+r+','+c+')" onmouseenter="grpMove('+r+','+c+')">'+
+         deskSvg(x.facing)+
+         sexMark(x.sex)+
+         '<div class="dnum">'+n+'番</div>'+
+         (S.showFlags?'<div class="dflags">'+flagIcons(nm)+'</div>':'')+
+         '<div class="dname'+(nm?'':' blank')+'" style="font-size:'+(nm?nameFont(nm):15)+'px">'+
+           (nm?esc(nm):'空席')+'</div>'+
+         '</div>';
+    }
+    h+='</div>';
+  }
+  id('seat-grid').innerHTML=h;
+  applyTZoom();
+  var placed=activeSeats().filter(function(s){return S.cells[s].name;}).length;
+  id('seat-stat').textContent='座席 '+n+'席／名前が入っているのは '+placed+'人（名簿 '+S.students.length+'人）';
+}
+function slotClick(r,c){
+  var x=cell(r,c); if(!x)return;
+  x.on=true; x.facing='up'; sndSelect(); renderSeats(); save();
+}
+function deskClick(r,c){
+  if(mode==='del'){ toggleSeat(r,c); return; }
+  if(mode==='face'){ cycleFacing(r,c); return; }
+  if(mode==='grp'||mode==='sex'){ paintCell(r,c); save(); return; }
+  openPicker(r,c);
+}
+function grpDown(r,c){ if(mode!=='grp'&&mode!=='sex')return; grpDrag=true; }
+function grpMove(r,c){ if((mode==='grp'||mode==='sex')&&grpDrag) paintCell(r,c); }
+document.addEventListener('mouseup',function(){ if(grpDrag){grpDrag=false; save();} });
+
+/* 座席表を枠内に収める。auto のときは幅いっぱいに自動調整する。
+   transform:scale はレイアウトの大きさを変えないので、枠の高さも合わせて調整する。 */
+var USE_ZOOM = ('zoom' in document.documentElement.style);
+function fitGrid(wrapId,gridId,level,auto){
+  var g=id(gridId), wrap=id(wrapId);
+  if(!g||!wrap) return level;
+  var avail=wrap.clientWidth-24;
+  if(avail<60) return level;                 // 画面に出ていないときは触らない
+  var natural=S.cols*130+(S.cols-1)*5;
+  var lv = auto ? Math.min(1,avail/natural) : level;
+  if(USE_ZOOM){
+    // zoom は占有する大きさも変わるので、余白も横スクロールも出ない
+    g.style.zoom=lv; g.style.transform=''; wrap.style.height='';
+  }else{
+    g.style.zoom=''; g.style.transform='scale('+lv+')';
+    wrap.style.height=(g.offsetHeight*lv+24)+'px';
+  }
+  return lv;
+}
+function tZoom(d){
+  if(d===0){ tZoomAuto=true; }
+  else { tZoomAuto=false; tZoomLv=Math.max(0.35,Math.min(1.8,tZoomLv+d)); }
+  applyTZoom(); sndClick();
+}
+function applyTZoom(){ tZoomLv=fitGrid('seat-wrap','seat-grid',tZoomLv,tZoomAuto); }
+
+/* --- 名前を選ぶポップアップ --- */
+function openPicker(r,c){
+  pickTarget={r:r,c:c};
+  var x=cell(r,c);
+  var used={};
+  activeSeats().forEach(function(s){ if(S.cells[s].name) used[S.cells[s].name]=1; });
+  var avail=S.students.filter(function(n){return !used[n]||n===x.name;});
+  var h='<h3>席 '+seatNo(sid(r,c))+' に入る子をえらぶ</h3>';
+  h+='<div class="pick-list">';
+  avail.forEach(function(n,i){
+    h+='<button onclick="pick(\''+esc(n).replace(/'/g,"\\'")+'\')">'+esc(n)+'</button>';
+  });
+  h+='</div>';
+  if(!avail.length) h+='<div class="empty-state">名簿の全員が席についています</div>';
+  h+='<div class="row" style="margin-top:12px">'+
+     '<button class="btn sm danger" onclick="pick(\'\')">空席にする</button>'+
+     '<button class="btn sm" onclick="closeModal()">とじる</button></div>';
+  id('modal').innerHTML=h;
+  id('overlay').classList.add('on');
+}
+function pick(name){
+  if(!pickTarget)return;
+  var x=cell(pickTarget.r,pickTarget.c);
+  if(x) x.name=name;
+  uncommitted=true;                    // 手で入れ替えたので「新しい配置」とみなす
+  name?sndSelect():sndDelete();
+  closeModal(); renderSeats(); save();
+}
+function closeModal(e){
+  if(e&&e.target!==id('overlay'))return;
+  id('overlay').classList.remove('on'); pickTarget=null;
+  pinThen=null; pinBuf='';          // パスワード入力をやめたときの後始末
+}
+
+/* =========================================================
+   名簿
+   ========================================================= */
+function onRoster(){
+  var lines=id('roster-ta').value.split('\n')
+    .map(function(s){return s.trim();}).filter(function(s){return s;});
+  // 重複は後ろに連番を付けて区別
+  var seen={}, out=[];
+  lines.forEach(function(n){
+    if(seen[n]){ seen[n]++; out.push(n+'('+seen[n]+')'); }
+    else { seen[n]=1; out.push(n); }
+  });
+  S.students=out;
+  id('roster-stat').textContent=out.length?out.length+'人':'';
+  id('num-card').style.display=out.length?'block':'none';
+  renderNumList(); updateSelects(); save();
+}
+function clearRoster(){
+  if(!confirm('名簿をすべて消しますか？'))return;
+  id('roster-ta').value=''; S.students=[]; S.flags={}; S.sex={}; S.vision=[]; S.seps=[]; sepDraft=[];
+  id('roster-stat').textContent=''; id('num-card').style.display='none';
+  renderNumList(); renderVision(); renderSeps(); updateSelects(); sndDelete(); save();
+}
+function loadSample(){
+  var names=['田中','鈴木','佐藤','高橋','伊藤','渡辺','山本','中村','小林','加藤',
+             '吉田','山田','佐々木','松本','井上','木村','林','斎藤','清水','山口',
+             '中島','小川','石川','前田','岡田','後藤','長谷川','村上','近藤','坂本'];
+  id('roster-ta').value=names.join('\n'); onRoster();
+  // 試しやすいように男女も入れておく
+  names.forEach(function(n,i){ S.sex[n]=(i%2===0)?'m':'f'; });
+  renderNumList(); renderSexStat(); sndSelect(); save();
+}
+function renderFlagLegend(){
+  var el=id('flag-legend'); if(!el)return;
+  el.innerHTML=FLAGS.map(function(f){
+    return '<span style="margin-right:12px;white-space:nowrap">'+f.icon+' '+f.label+'</span>';
+  }).join('');
+}
+function renderNumList(){
+  var h='';
+  S.students.forEach(function(n,i){
+    h+='<span class="num-chip"><span class="n">'+(i+1)+'</span><span>'+esc(n)+'</span>';
+    h+='<button class="sexbtn m'+(S.sex[n]==='m'?' on':'')+'" onclick="setSex('+i+',\'m\')">男</button>'+
+       '<button class="sexbtn f'+(S.sex[n]==='f'?' on':'')+'" onclick="setSex('+i+',\'f\')">女</button>';
+    FLAGS.forEach(function(f){
+      var on=S.flags[n]&&S.flags[n][f.key];
+      h+='<span class="f'+(on?' on':'')+'" title="'+f.label+'" onclick="toggleFlag('+i+',\''+f.key+'\')">'+f.icon+'</span>';
+    });
+    h+='</span>';
+  });
+  id('num-list').innerHTML=h;
+}
+function setSex(i,v){
+  var n=S.students[i]; if(!n)return;
+  if(S.sex[n]===v) delete S.sex[n]; else S.sex[n]=v;
+  sndClick(); renderNumList(); renderSexStat(); save();
+}
+function toggleFlag(i,key){
+  var n=S.students[i]; if(!n)return;
+  if(!S.flags[n])S.flags[n]={};
+  S.flags[n][key]=!S.flags[n][key];
+  if(!S.flags[n][key])delete S.flags[n][key];
+  sndClick(); renderNumList(); renderSeats(); updateSelects(); renderVision(); save();
+}
+
+/* =========================================================
+   配慮設定
+   ========================================================= */
+/* 名簿タブで 👓 を付けた児童 */
+function eyeStudents(){
+  return S.students.filter(function(n){ return S.flags[n]&&S.flags[n].vision; });
+}
+function updateSelects(){
+  ['sep-a'].forEach(function(x){
+    var el=id(x); if(!el)return;
+    var cur=el.value;
+    el.innerHTML=S.students.map(function(n){return '<option>'+esc(n)+'</option>';}).join('');
+    if(S.students.indexOf(cur)>=0)el.value=cur;
+  });
+}
+/* 視力配慮の対象は名簿タブの 👓 だけで決める。
+   古い保存データで手動登録されていた子は、👓 に移し替える。 */
+function migrateVision(){
+  (S.vision||[]).forEach(function(n){
+    if(S.students.indexOf(n)<0)return;          // 名簿にいない子は捨てる
+    if(!S.flags[n])S.flags[n]={};
+    S.flags[n].vision=true;
+  });
+  S.vision=[];
+}
+function renderVision(){
+  var eye=eyeStudents();
+  id('vision-list').innerHTML = eye.length
+    ? eye.map(function(n){ return '<span class="tag tag-o">👓 '+esc(n)+'</span>'; }).join('')
+    : '<span style="font-size:12px;color:var(--sub)">まだ対象がいません。名簿タブで 👓 を付けてください。</span>';
+}
+/* 保存データの形をそろえる。
+   きまりは {m:[名前…], d:マス数, k:'far'|'near'} で持つ。
+   古い [a,b] や [a,b,d] や [a,b,d,kind] の形はここで変換する。 */
+function normalizeSeps(){
+  S.seps=(S.seps||[]).map(function(p){
+    if(p&&!Array.isArray(p)&&p.m) {
+      return {m:p.m.slice(), d:(p.d>=1?(0|p.d):2), k:(p.k==='near'?'near':'far')};
+    }
+    var kind=(p.length>3&&p[3]==='near')?'near':'far';
+    var d=(p.length>2&&p[2]>=1)?(0|p[2]):(kind==='near'?1:2);
+    return {m:[p[0],p[1]], d:d, k:kind};
+  }).filter(function(p){ return p.m.length>=2; });
+}
+function sepDist(p){ return p.d>=1?(0|p.d):2; }
+function sepKind(p){ return p.k==='near'?'near':'far'; }
+function sepMembers(p){ return p.m||[]; }
+function sepLabel(p){
+  return sepKind(p)==='near'
+    ? (sepDist(p)===1?'となり合わせ':sepDist(p)+'マス以内')
+    : sepDist(p)+'マス以上';
+}
+/* 登録前の下書き（メンバーを足していく） */
+var sepDraft=[];
+function addSepMember(){
+  var n=id('sep-a').value;
+  if(!n||sepDraft.indexOf(n)>=0)return;
+  sepDraft.push(n); sndSelect(); renderSepDraft(); renderSepDistOptions();
+}
+function removeSepMember(i){ sepDraft.splice(i,1); sndDelete(); renderSepDraft(); renderSepDistOptions(); }
+function clearSepDraft(){ sepDraft=[]; renderSepDraft(); renderSepDistOptions(); }
+function renderSepDraft(){
+  var el=id('sep-members');
+  el.innerHTML = sepDraft.length
+    ? sepDraft.map(function(n,i){
+        return '<span class="tag tag-o">'+esc(n)+' <button onclick="removeSepMember('+i+')">×</button></span>';
+      }).join('')
+    : '<span style="font-size:11.5px;color:var(--sub)">児童をえらんで「＋メンバー」を押してください（2人以上）</span>';
+  id('sep-register').disabled = sepDraft.length<2;
+}
+/* 「離す」「近づける」と人数で、選べる距離が変わる */
+function renderSepDistOptions(){
+  var kind=id('sep-kind').value, sel=id('sep-d'), cur=sel.value;
+  var opts;
+  if(kind==='near'){
+    // 3人以上を全員となり合わせにするのは、どう並べても無理なので出さない
+    opts = (sepDraft.length>=3)
+      ? [[2,'2マス以内（かたまって座る）'],[3,'3マス以内']]
+      : [[1,'となり合わせ（1マス以内）'],[2,'2マス以内'],[3,'3マス以内']];
+  }else{
+    opts = [[2,'2マス以上（前後左右のとなりにしない）'],[3,'3マス以上（ななめもさける）'],
+            [4,'4マス以上'],[5,'5マス以上'],[6,'6マス以上（かなり遠く）']];
+  }
+  sel.innerHTML=opts.map(function(o){return '<option value="'+o[0]+'">'+o[1]+'</option>';}).join('');
+  if(opts.some(function(o){return String(o[0])===cur;})) sel.value=cur;
+}
+function addSep(){
+  if(sepDraft.length<2)return;
+  var kind=id('sep-kind').value==='near'?'near':'far';
+  var d=parseInt(id('sep-d').value)||(kind==='near'?2:2);
+  var key=sepDraft.slice().sort().join('|');
+  var cur=S.seps.filter(function(p){ return sepMembers(p).slice().sort().join('|')===key; })[0];
+  if(cur){ cur.d=d; cur.k=kind; }        // 同じ顔ぶれなら中身を更新する
+  else S.seps.push({m:sepDraft.slice(), d:d, k:kind});
+  sepDraft=[]; renderSepDraft();
+  sndSelect(); renderSeps(); renderSepDistOptions(); save();
+}
+function removeSep(i){ S.seps.splice(i,1); sndDelete(); renderSeps(); save(); }
+/* 優先順位の入れかえ。上にあるものほど強く守られる */
+function moveSep(i,d){
+  var j=i+d;
+  if(j<0||j>=S.seps.length)return;
+  var t=S.seps[i]; S.seps[i]=S.seps[j]; S.seps[j]=t;
+  sndClick(); renderSeps(); save();
+}
+function renderSeps(){
+  if(!S.seps.length){
+    id('sep-list').innerHTML='<span style="font-size:12px;color:var(--sub)">まだ登録がありません</span>';
+    return;
+  }
+  var last=S.seps.length-1;
+  var h='<div style="font-size:11.5px;color:var(--sub);margin-bottom:6px">'+
+        '上にあるものほど優先されます（1番が最優先）</div>';
+  S.seps.forEach(function(p,i){
+    var near=sepKind(p)==='near', ms=sepMembers(p);
+    h+='<div class="sep-row">'+
+       '<span class="sep-no">'+(i+1)+'</span>'+
+       '<span class="nm">'+ms.map(esc).join(' ・ ')+
+         (ms.length>2?'<span style="font-weight:400;font-size:10.5px;color:var(--sub)"> '+ms.length+'人</span>':'')+
+       '</span>'+
+       '<span class="dist'+(near?' near':'')+'">'+(near?'🤝 ':'↔️ ')+sepLabel(p)+'</span>'+
+       '<button class="mv" onclick="moveSep('+i+',-1)" title="優先度を上げる"'+(i===0?' disabled':'')+'>▲</button>'+
+       '<button class="mv" onclick="moveSep('+i+',1)" title="優先度を下げる"'+(i===last?' disabled':'')+'>▼</button>'+
+       '<button class="del" onclick="removeSep('+i+')" title="削除">×</button>'+
+       '</div>';
+  });
+  id('sep-list').innerHTML=h;
+}
+
+/* 「班」の定義。座席タブで班分けの色を塗ってあればそれを使い、
+   塗っていなければ 2×2 のまとまりを班とみなす。 */
+function usePaintedGroups(){
+  return activeSeats().some(function(s){ return S.cells[s].group>0; });
+}
+function quadGroups(){
+  var qs={};
+  if(usePaintedGroups()){
+    activeSeats().forEach(function(s){
+      var g=S.cells[s].group;
+      if(!g)return;                       // 色が塗られていない席は班なし
+      (qs['g'+g]=qs['g'+g]||[]).push(s);
+    });
+  }else{
+    activeSeats().forEach(function(s){
+      var p=rc(s), k=(p.r>>1)+'-'+(p.c>>1);
+      (qs[k]=qs[k]||[]).push(s);
+    });
+  }
+  return Object.keys(qs).map(function(k){return qs[k];});
+}
+function renderFlagCheck(){
+  var groups=quadGroups();
+  if(!groups.length){ id('flag-check').innerHTML='<div class="empty-state">座席がありません</div>'; return; }
+  var h='<table class="heat" style="font-size:12px"><thead><tr><th>班</th>';
+  FLAGS.forEach(function(f){h+='<th>'+f.icon+'</th>';});
+  h+='</tr></thead><tbody>';
+  groups.forEach(function(g,i){
+    h+='<tr><th>'+(i+1)+'</th>';
+    FLAGS.forEach(function(f){
+      var n=g.filter(function(s){var nm=S.cells[s].name;return nm&&S.flags[nm]&&S.flags[nm][f.key];}).length;
+      h+='<td style="background:'+(n>=2?'#ffe0e0':n===1?'#eaffea':'#fff')+'">'+(n||'')+'</td>';
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table><div style="font-size:11.5px;color:var(--sub);margin-top:6px">赤は同じ班に2人以上いる項目です。</div>';
+  id('flag-check').innerHTML=h;
+  sndClick();
+}
+
+/* =========================================================
+   配置アルゴリズム
+   ========================================================= */
+/*
+  名前と座席をあらかじめ番号に置きかえ、点数表を作ってから探索する。
+  文字列の連結や比較を探索中に一切しないので、古い端末でも速く終わる。
+  点数は「低いほど良い」。内訳は次の4つ。
+    ・視力配慮の子が後ろの席        … 1000（実質の禁止）
+    ・離す指定より近い2人           … (1200 +（足りないマス数）×800) × 優先度の重み
+                                      近いほど重い段階的な点にして、全部は満たせなくても
+                                      できるだけ離す。重みは並び順で 1, 0.45, 0.2 … と下がり、
+                                      下位すべてを足しても上位1つに届かないので、
+                                      上の指定から順に守られる
+    ・過去に隣になった回数          … 10点 × 回数
+    ・前と同じ席                   … 12点 × 回数
+    ・同じ班(2×2)に同じフラグが集中  … (人数-1)² × 8
+*/
+function buildCtx(){
+  var seats=activeSeats(), L=seats.length;
+  var names=S.students.slice(), N=names.length, M=N+1, EMPTY=N;
+  var keepV=id('ck-keep-vision').checked, keepS=id('ck-keep-sep').checked;
+  var keepX=id('ck-keep-sex').checked;
+  var vs=visionSet();
+  // 組み合わせのきまり（はなす／近づける）。並び順が優先順位で、先頭ほど強い。
+  // 児童ごとに持たせておき、探索中は相手の席をひいて距離を見るだけにする。
+  var nameIdx={}; names.forEach(function(nm,k){ nameIdx[nm]=k; });
+  var rules=[];
+  if(keepS) S.seps.forEach(function(p,rank){
+    // グループは「中の全ペア」に同じ条件を課す。優先順位の重みも共通。
+    var ms=sepMembers(p).map(function(nm){ return nameIdx[nm]; })
+                        .filter(function(x){ return x!==undefined; });
+    if(ms.length<2) return;                                // 名簿にいる子が1人以下なら無視
+    var req=sepDist(p), near=(sepKind(p)==='near');
+    var w=Math.max(0.06,Math.pow(0.45,rank));
+    for(var x=0;x<ms.length;x++)for(var y=x+1;y<ms.length;y++){
+      if(ms[x]===ms[y])continue;
+      rules.push({a:ms[x], b:ms[y], req:req, near:near, w:w});
+    }
+  });
+  var i,j,n,s;
+
+  // 男女：0=指定なし 1=男子 2=女子
+  var code={m:1,f:2};
+  var seatSex=new Int32Array(L);
+  for(s=0;s<L;s++) seatSex[s]=code[S.cells[seats[s]].sex]||0;
+  var stuSex=new Int32Array(M);
+  for(n=0;n<N;n++) stuSex[n]=code[S.sex[names[n]]]||0;
+
+  // 席 × 児童 の点数表
+  var seatCost=new Float64Array(L*M);
+  for(s=0;s<L;s++){
+    var isBack=!isFrontRow(rc(seats[s]).r);
+    for(n=0;n<N;n++){
+      var v=0, nm=names[n];
+      if(keepV&&vs[nm]&&isBack) v+=1000;
+      // 男女の指定がある席に、ちがう性別の子が来たら実質の禁止
+      if(keepX&&seatSex[s]&&stuSex[n]&&seatSex[s]!==stuSex[n]) v+=1000;
+      var h=S.seatHist[nm];
+      if(h&&h[seats[s]]) v+=h[seats[s]]*12;
+      seatCost[s*M+n]=v;
+    }
+  }
+  // 児童 × 児童（隣り合ったとき）の点数表＝これまで隣になった回数
+  var pairCost=new Float64Array(M*M);
+  for(i=0;i<N;i++)for(j=i+1;j<N;j++){
+    var pv=(S.adj[pairKey(names[i],names[j])]||0)*10;
+    pairCost[i*M+j]=pv; pairCost[j*M+i]=pv;
+  }
+  // きまりを児童ごとにまとめる（CSR形式：探索中の走査を最小にする）
+  var ruleStart=new Int32Array(M+1), ruleCnt=new Int32Array(M);
+  rules.forEach(function(r){ ruleCnt[r.a]++; ruleCnt[r.b]++; });
+  for(n=0;n<M;n++) ruleStart[n+1]=ruleStart[n]+ruleCnt[n];
+  var total2=ruleStart[M];
+  var rulePartner=new Int32Array(total2), ruleReq=new Int32Array(total2);
+  var ruleNear=new Int8Array(total2), ruleW=new Float64Array(total2);
+  var fill=new Int32Array(M);
+  rules.forEach(function(r){
+    [[r.a,r.b],[r.b,r.a]].forEach(function(pair){
+      var at=ruleStart[pair[0]]+fill[pair[0]]++;
+      rulePartner[at]=pair[1]; ruleReq[at]=r.req;
+      ruleNear[at]=r.near?1:0; ruleW[at]=r.w;
+    });
+  });
+  // フラグはビットで持つ（空席は0のまま）
+  var fbits=new Int32Array(M);
+  for(n=0;n<N;n++){
+    var f=S.flags[names[n]]; if(!f)continue;
+    var bit=0;
+    for(i=0;i<FLAGS.length;i++) if(f[FLAGS[i].key]) bit|=(1<<i);
+    fbits[n]=bit;
+  }
+  // 席どうしの距離。となりが1マス、ななめは2マス（縦横の移動数の合計）
+  var distTab=new Uint8Array(L*L);
+  for(i=0;i<L;i++){
+    var pi=rc(seats[i]);
+    for(j=0;j<L;j++){
+      var pj=rc(seats[j]);
+      distTab[i*L+j]=Math.abs(pi.r-pj.r)+Math.abs(pi.c-pj.c);
+    }
+  }
+  // 隣接（前後左右）＝これまで隣になった回数を数える範囲
+  var nbIdx=[], isNb=new Uint8Array(L*L);
+  for(i=0;i<L;i++){
+    var lst=[];
+    for(j=0;j<L;j++){
+      if(i===j)continue;
+      if(isAdjSeat(seats[i],seats[j])){ lst.push(j); isNb[i*L+j]=1; }
+    }
+    nbIdx.push(new Int32Array(lst));
+  }
+  // 班。色を塗ってあればその班、なければ2×2のまとまり。
+  // 色を塗っていない席は「班なし」として quadOf を -1 にする。
+  var painted=usePaintedGroups();
+  var quadOf=new Int32Array(L), quads=[], qmap={};
+  for(s=0;s<L;s++){
+    var key;
+    if(painted){
+      var g=S.cells[seats[s]].group;
+      if(!g){ quadOf[s]=-1; continue; }
+      key='g'+g;
+    }else{
+      var p=rc(seats[s]); key=(p.r>>1)+'-'+(p.c>>1);
+    }
+    if(qmap[key]===undefined){ qmap[key]=quads.length; quads.push([]); }
+    quadOf[s]=qmap[key]; quads[qmap[key]].push(s);
+  }
+  // 特別支援学級在籍を同じ班にしない指定
+  var snBit=0;
+  for(i=0;i<FLAGS.length;i++) if(FLAGS[i].key==='sn') snBit=(1<<i);
+  var snCount=0;
+  for(n=0;n<N;n++){ var fx=S.flags[names[n]]; if(fx&&fx.sn) snCount++; }
+  var keepSN = id('ck-keep-sn').checked && snCount>=2 && quads.length>0;
+  var frontSeats=[], backSeats=[];
+  for(s=0;s<L;s++) (isFrontRow(rc(seats[s]).r)?frontSeats:backSeats).push(s);
+  var visionNames=[], otherNames=[];
+  for(n=0;n<N;n++) (vs[names[n]]?visionNames:otherNames).push(n);
+
+  return {
+    seats:seats, L:L, names:names, N:N, M:M, EMPTY:EMPTY,
+    seatCost:seatCost, pairCost:pairCost, fbits:fbits,
+    ruleStart:ruleStart, rulePartner:rulePartner, ruleReq:ruleReq,
+    ruleNear:ruleNear, ruleW:ruleW, anyRule:(rules.length>0),
+    snBit:snBit, keepSN:keepSN, painted:painted,
+    distTab:distTab,
+    nbIdx:nbIdx, isNb:isNb, quadOf:quadOf,
+    quads:quads.map(function(g){return new Int32Array(g);}),
+    frontSeats:frontSeats, backSeats:backSeats,
+    visionNames:visionNames, otherNames:otherNames,
+    seatSex:seatSex, stuSex:stuSex,
+    keepV:keepV, keepS:keepS, keepX:keepX, vs:vs
+  };
+}
+/* 山登り法：2席を入れ替えて良くなれば採用、を繰り返す */
+function searchAssign(ctx,restarts,iters){
+  var L=ctx.L, M=ctx.M, N=ctx.N, EMPTY=ctx.EMPTY;
+  var seatCost=ctx.seatCost, pairCost=ctx.pairCost, fbits=ctx.fbits;
+  var nbIdx=ctx.nbIdx, isNb=ctx.isNb, quadOf=ctx.quadOf, quads=ctx.quads, QN=quads.length;
+  var ruleStart=ctx.ruleStart, rulePartner=ctx.rulePartner, ruleReq=ctx.ruleReq;
+  var ruleNear=ctx.ruleNear, ruleW=ctx.ruleW, anyRule=ctx.anyRule, distTab=ctx.distTab;
+  var snBit=ctx.snBit, keepSN=ctx.keepSN;
+  var arr=new Int32Array(L), best=new Int32Array(L), bestSc=Infinity;
+  var pos=new Int32Array(M);            // 児童 → 座っている席番号
+  var i,j,k,t;
+
+  /* 班ごとの点。フラグが同じ班に集まると重くなる。
+     「特別支援学級在籍を同じ班にしない」が有効なときは、
+     その項目だけ実質の禁止として強い点を足す。 */
+  function quadPen(qi){
+    if(qi<0) return 0;                     // 班に入っていない席
+    var g=quads[qi], c0=0,c1=0,c2=0,c3=0,c4=0,c5=0, sc=0;
+    for(var x=0;x<g.length;x++){
+      var f=fbits[arr[g[x]]];
+      if(!f)continue;
+      if(f&1)c0++; if(f&2)c1++; if(f&4)c2++; if(f&8)c3++; if(f&16)c4++; if(f&32)c5++;
+    }
+    if(c0>1)sc+=(c0-1)*(c0-1)*8;
+    if(c1>1)sc+=(c1-1)*(c1-1)*8;
+    if(c2>1)sc+=(c2-1)*(c2-1)*8;
+    if(c3>1)sc+=(c3-1)*(c3-1)*8;
+    if(c4>1)sc+=(c4-1)*(c4-1)*8;
+    if(c5>1)sc+=(c5-1)*(c5-1)*8;
+    if(keepSN){
+      var cs=0;
+      for(x=0;x<g.length;x++) if(fbits[arr[g[x]]]&snBit) cs++;
+      if(cs>1) sc+=(cs-1)*1200;
+    }
+    return sc;
+  }
+  /* きまり（はなす／近づける）による点。
+     相手の席をひいて距離を見るだけなので、きまりの数だけしか回らない。 */
+  function rulePen(s,n){
+    var v=0;
+    for(var k2=ruleStart[n];k2<ruleStart[n+1];k2++){
+      var ps=pos[rulePartner[k2]];
+      if(ps<0)continue;                        // 相手が座っていない
+      var d=distTab[s*L+ps], req=ruleReq[k2];
+      if(ruleNear[k2]){ if(d>req) v+=(1200+(d-req)*800)*ruleW[k2]; }
+      else            { if(d<req) v+=(1200+(req-d)*800)*ruleW[k2]; }
+    }
+    return v;
+  }
+  /* 席sに座る子の、まわりとの関係にかかる点。
+     隣接履歴は前後左右だけ、きまりは相手との距離で見る。 */
+  function partial(s){
+    var n=arr[s], v=seatCost[s*M+n], base=n*M, x;
+    var ns=nbIdx[s];
+    for(x=0;x<ns.length;x++) v+=pairCost[base+arr[ns[x]]];
+    if(anyRule) v+=rulePen(s,n);
+    return v;
+  }
+  /* 入れ替える2席の間にきまりがあると partial 同士で二重に数えるので、その分 */
+  function dupRule(a,b){
+    if(!anyRule)return 0;
+    var na=arr[a], nb2=arr[b], v=0;
+    for(var k2=ruleStart[na];k2<ruleStart[na+1];k2++){
+      if(rulePartner[k2]!==nb2)continue;
+      var d=distTab[a*L+b], req=ruleReq[k2];
+      if(ruleNear[k2]){ if(d>req) v+=(1200+(d-req)*800)*ruleW[k2]; }
+      else            { if(d<req) v+=(1200+(req-d)*800)*ruleW[k2]; }
+    }
+    return v;
+  }
+  function total(){
+    var sc=0,x,y;
+    for(x=0;x<L;x++){
+      sc+=seatCost[x*M+arr[x]];
+      var base=arr[x]*M, ns=nbIdx[x];
+      for(y=0;y<ns.length;y++) if(ns[y]>x) sc+=pairCost[base+arr[ns[y]]];
+      if(anyRule){
+        var n=arr[x];
+        for(var k2=ruleStart[n];k2<ruleStart[n+1];k2++){
+          var ps=pos[rulePartner[k2]];
+          if(ps<0||ps<=x)continue;             // 同じきまりを二度数えない
+          var d=distTab[x*L+ps], req=ruleReq[k2];
+          if(ruleNear[k2]){ if(d>req) sc+=(1200+(d-req)*800)*ruleW[k2]; }
+          else            { if(d<req) sc+=(1200+(req-d)*800)*ruleW[k2]; }
+        }
+      }
+    }
+    for(x=0;x<QN;x++) sc+=quadPen(x);
+    return sc;
+  }
+  function rebuildPos(){
+    for(var x=0;x<M;x++) pos[x]=-1;
+    for(x=0;x<L;x++) if(arr[x]<N) pos[arr[x]]=x;
+  }
+  var used=new Uint8Array(L);
+  function fillRandom(){
+    var x,p;
+    for(x=0;x<L;x++){ arr[x]=EMPTY; used[x]=0; }
+    var order, pool;
+    if(ctx.keepV){
+      // 視力配慮の子を先に、前のほうの席から埋める
+      order=shuffle(ctx.frontSeats.slice()).concat(shuffle(ctx.backSeats.slice()));
+      pool=shuffle(ctx.visionNames.slice()).concat(shuffle(ctx.otherNames.slice()));
+    }else{
+      order=[]; for(x=0;x<L;x++) order.push(x); shuffle(order);
+      pool=[];  for(x=0;x<N;x++) pool.push(x);  shuffle(pool);
+    }
+    // 男女の指定に合う席を優先して入れる（合う席がなければ空いている席へ）
+    for(p=0;p<pool.length;p++){
+      var nm=pool[p], sx=ctx.stuSex[nm], pick=-1, first=-1;
+      for(x=0;x<order.length;x++){
+        var si=order[x];
+        if(used[si])continue;
+        if(first<0) first=si;
+        var ss=ctx.seatSex[si];
+        if(!ctx.keepX||!ss||!sx||ss===sx){ pick=si; break; }
+      }
+      if(pick<0) pick=first;
+      if(pick<0) break;                        // 席が足りない
+      used[pick]=1; arr[pick]=nm;
+    }
+    rebuildPos();
+  }
+
+  for(t=0;t<restarts;t++){
+    fillRandom();
+    for(k=0;k<iters;k++){
+      var a=0|Math.random()*L, b=0|Math.random()*L;
+      if(a===b)continue;
+      // a-b の組は partial(a) と partial(b) の両方に入るので、その分を1回引く
+      var qa=quadOf[a], qb=quadOf[b], diffQ=(qa!==qb), adj=isNb[a*L+b];
+      var before=partial(a)+partial(b)+quadPen(qa)-dupRule(a,b);
+      if(adj) before-=pairCost[arr[a]*M+arr[b]];
+      if(diffQ) before+=quadPen(qb);
+      var tmp=arr[a]; arr[a]=arr[b]; arr[b]=tmp;
+      if(arr[a]<N) pos[arr[a]]=a;
+      if(arr[b]<N) pos[arr[b]]=b;
+      var after=partial(a)+partial(b)+quadPen(qa)-dupRule(a,b);
+      if(adj) after-=pairCost[arr[a]*M+arr[b]];
+      if(diffQ) after+=quadPen(qb);
+      if(after>before){                                   // 悪くなったので戻す
+        tmp=arr[a]; arr[a]=arr[b]; arr[b]=tmp;
+        if(arr[a]<N) pos[arr[a]]=a;
+        if(arr[b]<N) pos[arr[b]]=b;
+      }
+    }
+    var sc=total();
+    if(sc<bestSc){ bestSc=sc; best.set(arr); }
+    if(bestSc===0) break;
+  }
+  return {arr:best, score:bestSc};
+}
+function makeAssignment(smart){
+  var seats=activeSeats();
+  if(!seats.length) return null;
+  if(!S.students.length) return null;
+  if(S.students.length>seats.length){
+    if(!confirm('名簿('+S.students.length+'人)が座席数('+seats.length+'席)より多いです。あふれた子は座れませんが続けますか？')) return null;
+  }
+  var ctx=buildCtx();
+  var res = smart
+    ? searchAssign(ctx, 24, Math.max(8000, ctx.L*600))
+    : searchAssign(ctx, 1, 0);
+  var m={};
+  for(var i=0;i<ctx.L;i++){
+    var n=res.arr[i];
+    m[ctx.seats[i]] = (n>=0&&n<ctx.N) ? ctx.names[n] : '';
+  }
+  return m;
+}
+function applyAssignment(m){
+  Object.keys(S.cells).forEach(function(k){S.cells[k].name='';});
+  Object.keys(m).forEach(function(s){ if(S.cells[s]) S.cells[s].name=m[s]||''; });
+  current=m;
+}
+function runSmart(){ doAssign(true); }
+function runRandom(){ doAssign(false); }
+function doAssign(smart){
+  var st=id('smart-status');
+  st.textContent='計算中…';
+  setTimeout(function(){
+    var t0=Date.now();
+    var m=makeAssignment(smart);
+    if(!m){ st.textContent='⚠️ 名簿と座席を先に用意してください'; return; }
+    applyAssignment(m);
+    uncommitted=true;
+    renderSeats();
+    var v=checkViolations(m);
+    st.innerHTML='✅ 配置しました（'+(Date.now()-t0)+'ms）'+
+      (v.length?'<br><span style="color:var(--warn)">⚠️ '+v.join(' / ')+'</span>':'');
+    sndSelect(); save();
+  },20);
+}
+function checkViolations(m){
+  var out=[], vs=visionSet(), seats=Object.keys(m);
+  var bad=seats.filter(function(s){return m[s]&&vs[m[s]]&&!isFrontRow(rc(s).r);});
+  if(bad.length) out.push('視力配慮が後ろの席：'+bad.map(function(s){return m[s];}).join('、'));
+  if(id('ck-keep-sep').checked){
+    var sepBad=[];
+    S.seps.forEach(function(p,i){
+      var ms=sepMembers(p), req=sepDist(p), near=(sepKind(p)==='near'), worst=null;
+      for(var x=0;x<ms.length;x++)for(var y=x+1;y<ms.length;y++){
+        var sa=seats.filter(function(s){return m[s]===ms[x];})[0];
+        var sb=seats.filter(function(s){return m[s]===ms[y];})[0];
+        if(!sa||!sb)continue;
+        var d=seatDist(sa,sb);
+        if(near ? d>req : d<req){
+          // いちばん外れているペアを代表として出す
+          var gap=near?(d-req):(req-d);
+          if(!worst||gap>worst.gap) worst={gap:gap,a:ms[x],b:ms[y],d:d};
+        }
+      }
+      if(worst) sepBad.push((i+1)+'番目「'+ms.join('・')+'」'+sepLabel(p)+'にしたい／'+
+        worst.a+(near?'🤝':'↔️')+worst.b+'が'+worst.d+'マス');
+    });
+    if(sepBad.length) out.push('組み合わせの指定が守れず：'+sepBad.join('、'));
+  }
+  if(id('ck-keep-sn').checked){
+    var snBad=[];
+    quadGroups().forEach(function(g,i){
+      var who=g.map(function(s){return m[s];})
+               .filter(function(n){ return n&&S.flags[n]&&S.flags[n].sn; });
+      if(who.length>1) snBad.push('班'+(i+1)+'に'+who.join('・'));
+    });
+    if(snBad.length) out.push('🏫 特別支援が同じ班：'+snBad.join('、'));
+  }
+  if(id('ck-keep-sex').checked){
+    var sexBad=seats.filter(function(s){
+      var n=m[s], ss=S.cells[s]&&S.cells[s].sex, ps=S.sex[n];
+      return n&&ss&&ps&&ss!==ps;
+    });
+    if(sexBad.length) out.push('男女席が合わず：'+sexBad.map(function(s){return m[s];}).join('、'));
+  }
+  return out;
+}
+
+/* 席替えを「確定」して統計に記録する。
+   同じ座席表のまま発表を繰り返しても二重に数えないよう、
+   新しく配置し直したときだけ記録する。 */
+function commitRound(m){
+  if(!uncommitted) return;
+  uncommitted=false;
+  S.rounds++;
+  recordAdjacency(m);
+  recordSeatHistory(m);
+  S.history.unshift({t:new Date().toLocaleString('ja-JP'),a:JSON.parse(JSON.stringify(m)),rows:S.rows,cols:S.cols});
+  if(S.history.length>100)S.history.length=100;
+  updateRound(); save();
+}
+function recordAdjacency(m){
+  var seats=Object.keys(m);
+  for(var i=0;i<seats.length;i++){
+    var a=m[seats[i]]; if(!a)continue;
+    for(var j=i+1;j<seats.length;j++){
+      var b=m[seats[j]]; if(!b)continue;
+      if(!isAdjSeat(seats[i],seats[j]))continue;
+      var k=pairKey(a,b);
+      S.adj[k]=(S.adj[k]||0)+1;
+    }
+  }
+}
+function recordSeatHistory(m){
+  Object.keys(m).forEach(function(s){
+    var n=m[s]; if(!n)return;
+    if(!S.seatHist[n])S.seatHist[n]={};
+    S.seatHist[n][s]=(S.seatHist[n][s]||0)+1;
+  });
+}
+function updateRound(){ id('round-badge').textContent=(S.rounds+1)+'回目'; }
+
+/* =========================================================
+   統計
+   ========================================================= */
+var statCur='rank';
+function statTab(n){
+  statCur=n;
+  ['rank','heat','never','seat'].forEach(function(x){
+    id('sp-'+x).style.display=x===n?'block':'none';
+    id('stb-'+x).classList.toggle('primary',x===n);
+  });
+  renderStats(); sndClick();
+}
+function renderStats(){
+  var has=S.rounds>0&&S.students.length>0;
+  id('stat-empty').style.display=has?'none':'block';
+  id('stat-body').style.display=has?'block':'none';
+  ['rank','heat','never','seat'].forEach(function(x){
+    id('sp-'+x).style.display=(x===statCur)?'block':'none';
+    id('stb-'+x).classList.toggle('primary',x===statCur);
+  });
+  if(!has)return;
+  if(statCur==='rank')renderRank();
+  if(statCur==='heat')renderHeat();
+  if(statCur==='never')renderNever();
+  if(statCur==='seat')renderSeatHeat();
+}
+function renderRank(){
+  var rows=Object.keys(S.adj).map(function(k){return {k:k,n:S.adj[k]};})
+    .sort(function(a,b){return b.n-a.n;}).slice(0,40);
+  if(!rows.length){id('sp-rank').innerHTML='<div class="empty-state">データがありません</div>';return;}
+  var max=rows[0].n;
+  var h='<div style="font-size:12px;color:var(--sub);margin-bottom:6px">隣同士になった回数が多い順（上位40組）</div>';
+  rows.forEach(function(r,i){
+    var p=r.k.split('|');
+    h+='<div class="rank-row"><span class="no">'+(i+1)+'</span>'+
+       '<span style="flex:1">'+esc(p[0])+' ・ '+esc(p[1])+'</span>'+
+       '<span class="bar" style="width:'+(r.n/max*90)+'px"></span>'+
+       '<span style="font-weight:700;min-width:36px;text-align:right">'+r.n+'回</span></div>';
+  });
+  id('sp-rank').innerHTML=h;
+}
+function renderHeat(){
+  var ns=S.students;
+  if(ns.length>40){id('sp-heat').innerHTML='<div class="empty-state">人数が多すぎて表示できません</div>';return;}
+  var max=1; Object.keys(S.adj).forEach(function(k){if(S.adj[k]>max)max=S.adj[k];});
+  var h='<div style="font-size:12px;color:var(--sub);margin-bottom:6px">色が濃いほど、たくさん隣になっています</div>';
+  h+='<table class="heat"><thead><tr><th></th>';
+  ns.forEach(function(n,i){h+='<th title="'+esc(n)+'">'+(i+1)+'</th>';});
+  h+='</tr></thead><tbody>';
+  ns.forEach(function(a,i){
+    h+='<tr><th>'+(i+1)+' '+esc(a)+'</th>';
+    ns.forEach(function(b){
+      if(a===b){h+='<td style="background:#eee"></td>';return;}
+      var v=S.adj[pairKey(a,b)]||0;
+      var al=v?(0.15+0.85*v/max):0;
+      h+='<td style="background:rgba(124,92,255,'+al.toFixed(2)+');color:'+(al>0.55?'#fff':'inherit')+'">'+(v||'')+'</td>';
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  id('sp-heat').innerHTML=h;
+}
+function renderNever(){
+  var ns=S.students,h='';
+  h+='<div style="font-size:12px;color:var(--sub);margin-bottom:8px">まだ一度も隣になっていない相手です</div>';
+  var total=0;
+  ns.forEach(function(a){
+    var never=ns.filter(function(b){return b!==a&&!(S.adj[pairKey(a,b)]);});
+    total+=never.length;
+    h+='<div style="margin-bottom:8px"><div style="font-weight:700;font-size:12.5px;margin-bottom:3px">'+
+       esc(a)+' <span style="color:var(--sub);font-weight:400">（'+never.length+'人）</span></div>'+
+       '<div class="never-grid">'+never.map(function(b){return '<span class="never-chip">'+esc(b)+'</span>';}).join('')+'</div></div>';
+  });
+  h+='<div style="font-size:12px;color:var(--sub);margin-top:8px">未ペア合計 '+(total/2)+' 組</div>';
+  id('sp-never').innerHTML=h;
+}
+function renderSeatHeat(){
+  var ns=S.students;
+  var h='<div class="row" style="margin-bottom:8px"><span style="font-size:12px;font-weight:700">児童：</span>'+
+        '<select id="sh-sel" onchange="renderSeatHeat()">'+
+        ns.map(function(n){return '<option>'+esc(n)+'</option>';}).join('')+'</select></div>';
+  var sel=id('sh-sel')?id('sh-sel').value:ns[0];
+  var hist=S.seatHist[sel]||{};
+  var max=1; Object.keys(hist).forEach(function(k){if(hist[k]>max)max=hist[k];});
+  h+='<div class="board">こくばん</div>';
+  h+='<div style="display:grid;gap:6px;justify-content:center;grid-template-columns:repeat('+S.cols+',minmax(44px,66px))">';
+  for(var r=0;r<S.rows;r++)for(var c=0;c<S.cols;c++){
+    var x=cell(r,c);
+    if(!x||!x.on){h+='<div style="min-height:42px"></div>';continue;}
+    var v=hist[sid(r,c)]||0, al=v?(0.15+0.85*v/max):0;
+    h+='<div style="min-height:42px;border-radius:8px;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;'+
+       'font-weight:700;background:rgba(124,92,255,'+al.toFixed(2)+');color:'+(al>0.55?'#fff':'var(--sub)')+'">'+(v||'')+'</div>';
+  }
+  h+='</div>';
+  id('sp-seat').innerHTML=h;
+  if(id('sh-sel'))id('sh-sel').value=sel;
+}
+function clearStats(){
+  if(!confirm('統計データ（隣になった回数・座席の使用回数・回数）をリセットしますか？'))return;
+  S.adj={}; S.seatHist={}; S.rounds=0;
+  updateRound(); renderStats(); sndDelete(); save();
+}
+
+/* =========================================================
+   履歴
+   ========================================================= */
+function renderHistory(){
+  if(!S.history.length){id('hist-list').innerHTML='<div class="empty-state"><span class="ico">📅</span>まだ履歴がありません</div>';return;}
+  var h='';
+  S.history.forEach(function(x,i){
+    var a=x.a||{};
+    var cnt=Object.keys(a).filter(function(k){return a[k];}).length;
+    h+='<div class="hist-row"><span style="font-weight:700">'+(S.history.length-i)+'</span>'+
+       '<span class="d">'+esc(x.t)+'　'+cnt+'人</span>'+
+       '<button class="btn sm" onclick="histView('+i+')">見る</button>'+
+       '<button class="btn sm" onclick="histRestore('+i+')">もどす</button>'+
+       '<button class="btn sm danger" onclick="histDel('+i+')">削除</button></div>';
+  });
+  id('hist-list').innerHTML=h;
+}
+function histView(i){
+  var x=S.history[i]; if(!x)return;
+  var cols=x.cols||S.cols, rows=x.rows||S.rows;
+  var h='<h3>'+esc(x.t)+'</h3><div class="board">こくばん</div>';
+  h+='<div style="display:grid;gap:5px;grid-template-columns:repeat('+cols+',1fr)">';
+  for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){
+    var n=(x.a||{})[sid(r,c)];
+    h+='<div style="min-height:38px;border-radius:8px;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11.5px;'+
+       (n?'background:#fff':'background:transparent;border-style:dashed')+'">'+(n?esc(n):'')+'</div>';
+  }
+  h+='</div><div class="row" style="margin-top:12px"><button class="btn sm" onclick="closeModal()">とじる</button></div>';
+  id('modal').innerHTML=h; id('overlay').classList.add('on');
+}
+function histRestore(i){
+  var x=S.history[i]; if(!x)return;
+  if(!confirm('この席替えの配置に戻しますか？（今の座席表は上書きされます）'))return;
+  if(x.rows&&x.cols){ S.rows=x.rows; S.cols=x.cols; id('in-rows').value=x.rows; id('in-cols').value=x.cols; ensureCells(); }
+  if(!x.a){ alert('この履歴には配置が保存されていません。'); return; }
+  applyAssignment(x.a);
+  Object.keys(x.a).forEach(function(s){ if(S.cells[s]) S.cells[s].on=true; });
+  renderSeats(); tab('seat',id('tabs').children[0]); sndSelect(); save();
+}
+function histDel(i){
+  if(!confirm('この履歴を削除しますか？'))return;
+  S.history.splice(i,1); renderHistory(); sndDelete(); save();
+}
+
+/* =========================================================
+   設定（フォント・テーマ・BGM）
+   ========================================================= */
+function renderConfBtns(){
+  id('font-btns').innerHTML=FONTS.map(function(f){
+    return '<button class="btn sm'+(S.font===f.key?' primary':'')+'" onclick="setFont(\''+f.key+'\')">'+f.label+'</button>';
+  }).join('');
+  id('theme-btns').innerHTML=THEMES.map(function(t){
+    return '<button class="btn sm'+(S.theme===t.key?' primary':'')+'" onclick="setTheme(\''+t.key+'\')">'+t.label+'</button>';
+  }).join('');
+  id('bgm-btns').innerHTML=BGMS.map(function(b){
+    return '<button class="btn sm'+(S.bgm===b.key?' primary':'')+'" onclick="setBgm(\''+b.key+'\')">'+b.label+'</button>';
+  }).join('');
+}
+function setFont(k){ S.font=k; document.body.dataset.font=k; renderConfBtns(); sndClick(); save(); }
+function setTheme(k){ S.theme=k; document.body.dataset.theme=k; renderConfBtns(); sndClick(); save(); }
+function setBgm(k){
+  S.bgm=k; renderConfBtns(); save();
+  bgmStop();
+  if(k!=='none'){ bgmStart(); setTimeout(bgmStop,2200); }  // 試聴
+}
+
+/* =========================================================
+   データの持ち出し
+   ========================================================= */
+function exportData(){
+  var blob=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='sekigae_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+  sndSelect();
+}
+function importData(ev){
+  var f=ev.target.files[0]; if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var d=JSON.parse(r.result);
+      if(!confirm('今のデータを、読み込んだデータで上書きします。よろしいですか？'))return;
+      Object.keys(S).forEach(function(k){ if(d[k]!==undefined) S[k]=d[k]; });
+      applyAllFromState(); save();
+      alert('読み込みました。');
+    }catch(e){ alert('ファイルを読み込めませんでした。'); }
+    ev.target.value='';
+  };
+  r.readAsText(f);
+}
+function resetAll(){
+  if(!confirm('すべてのデータ（名簿・座席・統計・履歴）を消します。よろしいですか？'))return;
+  if(!confirm('本当に消してよろしいですか？　元に戻せません。'))return;
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  location.reload();
+}
+
+/* =========================================================
+   子ども画面
+   ========================================================= */
+var spinIv=null, oboIv=null, oboQueue=[], oboIdx=0, oboSpinning=false, oboSeats=[], oboToken=0;
+function showK(n){
+  ['waiting','cd','spin','reveal','obo'].forEach(function(x){
+    id('k-'+x).classList.toggle('on',x===n);
+  });
+  id('k-zoom').style.display=(n==='reveal'||n==='obo')?'flex':'none';
+  if(n==='reveal'||n==='obo') applyKZoom();
+}
+function resetKid(){
+  clearInterval(spinIv); clearInterval(oboIv); bgmStop(); oboToken++;
+  oboQueue=[]; oboIdx=0; oboSpinning=false; kZoomLv=1;
+  showK('waiting'); kReadyMsg();
+}
+function kZoom(d){
+  if(d===0){ kZoomAuto=true; }
+  else { kZoomAuto=false; kZoomLv=Math.max(0.35,Math.min(2,kZoomLv+d)); }
+  applyKZoom();
+}
+function applyKZoom(){
+  var a=fitGrid('rv-wrap','rv-grid',kZoomLv,kZoomAuto);
+  var b=fitGrid('obo-wrap','obo-grid',kZoomLv,kZoomAuto);
+  kZoomLv = (a!==kZoomLv) ? a : b;
+}
+function prepare(){
+  var seats=activeSeats();
+  if(!seats.length){ alert('先生画面で座席を作ってください。'); return null; }
+  if(!S.students.length){ alert('先生画面で名簿を入れてください。'); return null; }
+  // 席に名前が入っていなければ、その場でスマート配置する
+  var placed=seats.filter(function(s){return S.cells[s].name;}).length;
+  if(placed<Math.min(seats.length,S.students.length)){
+    var m=makeAssignment(true); if(!m)return null; applyAssignment(m); uncommitted=true;
+  }else{
+    var m2={}; seats.forEach(function(s){m2[s]=S.cells[s].name||'';}); current=m2;
+  }
+  return current;
+}
+function renderKGrid(gridId,hidden){
+  var h=blackboardSvg(S.cols), n=0;
+  for(var r=0;r<S.rows;r++){
+    h+='<div class="seat-row">';
+    for(var c=0;c<S.cols;c++){
+      var x=cell(r,c);
+      if(!x||!x.on){ h+='<div class="cellbox" style="visibility:hidden"></div>'; continue; }
+      n++;
+      var nm=current[sid(r,c)]||'';
+      var cls='cellbox seat'+(hidden?' veil':(nm?' has-name':''))+(isFrontRow(r)?' vrow':'');
+      h+='<div class="'+cls+'" data-f="'+x.facing+'" data-g="'+((S.kidGroups&&x.group)||0)+'" id="'+gridId+'-'+sid(r,c)+'">'+
+         deskSvg(x.facing)+
+         '<div class="dnum">'+n+'番</div>'+
+         /* 子ども画面には配慮フラグを出さない（人に見せてよい情報ではない） */
+         '<div class="dname'+(nm?'':' blank')+'" style="font-size:'+(nm?nameFont(nm):15)+'px">'+
+           (nm?esc(nm):'空席')+'</div>'+
+         '</div>';
+    }
+    h+='</div>';
+  }
+  id(gridId).innerHTML=h;
+  applyKZoom();
+}
+/* 発表：名前のベールをはずす */
+function unveil(el){
+  if(!el)return;
+  el.classList.remove('veil');
+  if(el.querySelector('.dname') && !el.querySelector('.dname').classList.contains('blank')) el.classList.add('has-name');
+  el.classList.add('pop');
+}
+function sparkleAt(el){
+  var r=el.getBoundingClientRect();
+  for(var i=0;i<5;i++){
+    var s=document.createElement('div');
+    s.className='sparkle'; s.textContent=['✨','⭐','🌟','💫'][0|Math.random()*4];
+    s.style.left=(r.left+r.width/2)+'px'; s.style.top=(r.top+r.height/2)+'px';
+    s.style.setProperty('--dx',((Math.random()-0.5)*90)+'px');
+    s.style.setProperty('--dy',(-30-Math.random()*60)+'px');
+    document.body.appendChild(s);
+    setTimeout(function(e){return function(){e.remove();};}(s),820);
+  }
+}
+
+/* --- いっせいに発表 --- */
+function startAll(){
+  ac()&&ac().resume&&ac().resume();
+  if(!prepare())return;
+  bgmStart();
+  countdown(function(){
+    // ルーレット
+    showK('spin');
+    var names=S.students.slice();
+    var t=0;
+    spinIv=setInterval(function(){
+      id('spin-name').textContent=names[0|Math.random()*names.length]||'…';
+      sndFlip(); t++;
+      if(t>26){
+        clearInterval(spinIv);
+        showK('reveal');
+        id('reveal-title').textContent='あたらしい席は…！';
+        renderKGrid('rv-grid',true);
+        revealAll('rv-grid');
+      }
+    },95);
+  });
+}
+function revealAll(gridId){
+  var seats=shuffle(activeSeats().slice());
+  var i=0;
+  var iv=setInterval(function(){
+    if(i>=seats.length){
+      clearInterval(iv); bgmStop(); sndFanfare();
+      id('reveal-title').textContent='🎉 これがあたらしい席です！';
+      commitRound(current);
+      return;
+    }
+    var el=id(gridId+'-'+seats[i]);
+    if(el){ unveil(el); sparkleAt(el); }
+    sndReveal(); i++;
+  },170);
+}
+function countdown(done){
+  showK('cd');
+  var n=3;
+  id('cd-num').textContent=n; sndCd(n);
+  var iv=setInterval(function(){
+    n--;
+    if(n<=0){ clearInterval(iv); done(); return; }
+    var el=id('cd-num');
+    el.textContent=n;
+    el.style.animation='none'; void el.offsetWidth; el.style.animation='';
+    sndCd(n);
+  },900);
+}
+
+/* --- ひとりずつ発表 --- */
+function startObo(){
+  ac()&&ac().resume&&ac().resume();
+  if(!prepare())return;
+  oboSeats=activeSeats();
+  oboQueue=shuffle(oboSeats.filter(function(s){return current[s];})
+    .map(function(s){return {seat:s,name:current[s]};}));
+  if(!oboQueue.length){ alert('席に名前が入っていません。'); return; }
+  oboIdx=0;
+  kZoomLv=1;
+  renderKGrid('obo-grid',true);
+  bgmStart();
+  showK('obo');
+  oboShow();
+}
+function oboShow(){
+  var it=oboQueue[oboIdx];
+  if(!it){ oboDone(); return; }
+  id('obo-name').textContent=it.name+'さん';
+  id('obo-stop').style.display='inline-block';
+  id('obo-next').style.display='none';
+  renderOboDots();
+  // 未発表の席をぐるぐる
+  var remain=oboQueue.slice(oboIdx).map(function(x){return x.seat;});
+  oboSpinning=true;
+  clearInterval(oboIv);
+  var k=0;
+  oboIv=setInterval(function(){
+    var s=remain[k%remain.length];
+    document.querySelectorAll('#obo-grid .cellbox.hi').forEach(function(e){e.classList.remove('hi');});
+    var el=id('obo-grid-'+s);
+    if(el)el.classList.add('hi');
+    id('obo-no').textContent=seatNo(s)+'番';
+    sndTick(); k++;
+  },90);
+}
+function oboStop(){
+  if(!oboSpinning)return;
+  oboSpinning=false;
+  clearInterval(oboIv);
+  id('obo-stop').style.display='none';
+  var it=oboQueue[oboIdx], token=++oboToken;
+  // いきなり当たりの席へ飛ぶと不自然なので、だんだん遅くしながら止める
+  var remain=oboQueue.slice(oboIdx).map(function(x){return x.seat;});
+  var pos=remain.indexOf(it.seat), steps=Math.min(7,remain.length);
+  var seq=[];
+  for(var i=steps;i>0;i--) seq.push(remain[((pos-i)%remain.length+remain.length)%remain.length]);
+  seq.push(it.seat);
+  var k=0, delay=70;
+  (function step(){
+    if(token!==oboToken) return;             // 途中で画面を切り替えたら止める
+    document.querySelectorAll('#obo-grid .cellbox.hi').forEach(function(e){e.classList.remove('hi');});
+    var s=seq[k], el=id('obo-grid-'+s);
+    if(el) el.classList.add('hi');
+    id('obo-no').textContent=seatNo(s)+'番';
+    if(k>=seq.length-1){ oboLand(it); return; }
+    sndTick(); k++; delay*=1.32;
+    setTimeout(step,delay);
+  })();
+}
+function oboLand(it){
+  var el=id('obo-grid-'+it.seat);
+  if(el){ unveil(el); sparkleAt(el); }
+  sndStop();
+  id('obo-next').style.display='inline-block';
+  id('obo-next').textContent=(oboIdx>=oboQueue.length-1)?'けっか発表 ▶':'つぎの人 ▶';
+}
+function oboNext(){
+  var el=id('obo-grid-'+oboQueue[oboIdx].seat);
+  if(el)el.classList.remove('hi');
+  oboIdx++;
+  if(oboIdx>=oboQueue.length){ oboDone(); return; }
+  oboShow();
+}
+function oboDone(){
+  clearInterval(oboIv); bgmStop(); sndFanfare();
+  showK('reveal');
+  id('reveal-title').textContent='🎉 これがあたらしい席です！';
+  renderKGrid('rv-grid',false);
+  commitRound(current);
+}
+function renderOboDots(){
+  var h='';
+  oboQueue.forEach(function(_,i){
+    h+='<div class="obo-dot'+(i<oboIdx?' done':(i===oboIdx?' current':''))+'"></div>';
+  });
+  id('obo-dots').innerHTML=h;
+}
+
+/* =========================================================
+   起動
+   ========================================================= */
+/* 起動時に1か所でも失敗すると画面が真っ白になっていたので、
+   工程ごとに区切って、失敗しても残りは動かす。 */
+var bootWarnings=[];
+function safeStep(label,fn){
+  try{ fn(); }catch(e){ bootWarnings.push(label+' … '+((e&&e.message)||e)); }
+}
+function applyAllFromState(){
+  safeStep('データの形式そろえ',function(){ normalizeSeps(); migrateVision(); });
+  safeStep('見た目の設定',function(){
+    document.body.dataset.theme=S.theme||'default';
+    document.body.dataset.font=S.font||'maru';
+  });
+  safeStep('入力欄の復元',function(){
+    id('in-rows').value=S.rows; id('in-cols').value=S.cols;
+    id('vision-rows').value=S.visionRows||2;
+    id('chk-sound').checked=S.sound!==false;
+    id('ck-kid-groups').checked=!!S.kidGroups;
+    id('ck-show-flags').checked=!!S.showFlags;
+    id('ck-keep-sn').checked=S.keepSN!==false;
+  });
+  safeStep('名簿',function(){
+    if(!Array.isArray(S.students)) S.students=[];
+    id('roster-ta').value=S.students.join('\n');
+    id('roster-stat').textContent=S.students.length?S.students.length+'人':'';
+    id('num-card').style.display=S.students.length?'block':'none';
+  });
+  safeStep('座席',function(){ ensureCells(); renderSeats(); });
+  safeStep('出席番号一覧',renderNumList);
+  safeStep('視力配慮',renderVision);
+  safeStep('組み合わせ',renderSeps);
+  safeStep('男女の集計',renderSexStat);
+  safeStep('選択肢',function(){ updateSelects(); renderSepDraft(); renderSepDistOptions(); });
+  safeStep('フラグ凡例',renderFlagLegend);
+  safeStep('設定ボタン',renderConfBtns);
+  safeStep('回数表示',updateRound);
+  safeStep('履歴',renderHistory);
+  safeStep('パスワード表示',renderPinHint);
+  safeStep('今の配置',function(){
+    var m={}; activeSeats().forEach(function(s){ m[s]=S.cells[s].name||''; });
+    current=m;
+  });
+}
+/* 起動時にどこかで失敗した場合の知らせ。使用は続けられる。 */
+function showBootWarnings(){
+  if(!bootWarnings.length) return;
+  var txt='せきがえメーカー 起動時の警告\n'+
+          new Date().toLocaleString('ja-JP')+'\n'+navigator.userAgent+'\n\n'+
+          bootWarnings.join('\n');
+  var box=document.createElement('div');
+  box.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9998;background:#fff7e6;'+
+    'border-top:3px solid #e8a33d;padding:12px 14px;font-family:sans-serif;font-size:13px;'+
+    'line-height:1.8;max-height:55vh;overflow:auto;box-shadow:0 -4px 18px rgba(0,0,0,.15)';
+  box.innerHTML=
+    '<b style="color:#a35c00">⚠️ 一部のデータを読み込めませんでした</b>'+
+    '<div style="font-size:12px;color:#666">アプリは使えますが、下の内容を先生にお知らせください。</div>'+
+    '<pre style="background:#fff;border:1px solid #eadfc8;border-radius:8px;padding:10px;'+
+      'font-size:11.5px;white-space:pre-wrap;word-break:break-all;margin:8px 0">'+esc(txt)+'</pre>'+
+    '<button id="bw-copy" class="btn sm">内容をコピー</button> '+
+    '<button id="bw-save" class="btn sm">データを書き出す</button> '+
+    '<button id="bw-close" class="btn sm">閉じる</button>';
+  document.body.appendChild(box);
+  document.getElementById('bw-copy').onclick=function(){
+    var ta=document.createElement('textarea');
+    ta.value=txt; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); this.textContent='コピーしました'; }catch(e){}
+    ta.remove();
+  };
+  document.getElementById('bw-save').onclick=function(){ try{ exportData(); }catch(e){} };
+  document.getElementById('bw-close').onclick=function(){ box.remove(); };
+}
+/* 起動に失敗したときは、白い画面のままにせず理由を出して逃げ道を作る */
+function showBootError(e){
+  var box=document.createElement('div');
+  box.style.cssText='position:fixed;inset:0;z-index:9999;background:#fff;color:#333;'+
+    'font-family:sans-serif;padding:24px;overflow:auto;line-height:1.9';
+  box.innerHTML=
+    '<h1 style="color:#c0392b;font-size:20px">⚠️ 起動できませんでした</h1>'+
+    '<p>保存されているデータを読み込めませんでした。下のボタンでやり直せます。</p>'+
+    '<pre style="background:#f4f4f4;padding:12px;border-radius:8px;font-size:12px;'+
+      'white-space:pre-wrap;word-break:break-all">'+
+      String((e&&e.message)||e)+'\n\n'+String((e&&e.stack)||'')+'</pre>'+
+    '<p><button id="boot-reset" style="font-family:inherit;font-size:16px;padding:12px 22px;'+
+      'border:none;border-radius:12px;background:#7c5cff;color:#fff;cursor:pointer">'+
+      '保存データを消してやり直す</button></p>'+
+    '<p style="font-size:13px;color:#777">名簿・統計・履歴も消えます。'+
+      'この文章を先生に見せると原因が分かります。</p>';
+  document.body.appendChild(box);
+  var b=document.getElementById('boot-reset');
+  if(b) b.onclick=function(){
+    if(!confirm('保存データをすべて消します。よろしいですか？'))return;
+    try{ localStorage.removeItem(KEY); }catch(x){}
+    location.reload();
+  };
+}
+function init(){
+  var had=false;
+  try{ had=load(); }catch(e){ had=false; }
+  try{
+    if(!had){ S.rows=5; S.cols=6; applyPreset(30); }
+    applyAllFromState();
+    if(had) showSave('loaded');
+    // 最後に子ども画面だったなら、そのまま子ども画面で開く
+    // （リロードすれば先生画面に入れる、という抜け道をなくすため）
+    if(S.screen==='k'){
+      id('scr-t').classList.remove('on'); id('scr-k').classList.add('on');
+      resetKid();
+    }
+  }catch(e){
+    showBootError(e);
+    return;
+  }
+  showBootWarnings();
+  document.addEventListener("keydown",function(e){
+    if(pinThen&&id('overlay').classList.contains('on')){
+      if(/^[0-9]$/.test(e.key)){ pinTap(e.key); e.preventDefault(); return; }
+      if(e.key==='Backspace'){ pinBack(); e.preventDefault(); return; }
+    }
+    if(e.key==='Escape') closeModal({target:id('overlay')});
+  });
+  var rzTimer=null;
+  window.addEventListener('resize',function(){
+    clearTimeout(rzTimer);
+    rzTimer=setTimeout(function(){ applyTZoom(); applyKZoom(); },150);
+  });
+}
+/* 想定外の失敗も拾って、真っ白のままにしない */
+window.addEventListener('error',function(ev){
+  if(!document.getElementById('boot-reset') && !window.__booted) showBootError(ev.error||ev.message);
+});
+try{ init(); window.__booted=true; }catch(e){ showBootError(e); }
+</script>
+</body>
+</html>
