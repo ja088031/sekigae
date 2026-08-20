@@ -405,6 +405,11 @@ table.heat thead th{top:0;z-index:2}
         <button class="btn sm" onclick="toggleSex()"  id="btn-sex">♂♀ 男女席</button>
         <button class="btn sm danger" onclick="clearNames()">名前を全消去</button>
       </div>
+      <div class="row" style="margin-bottom:8px">
+        <label class="ck"><input type="checkbox" id="ck-kid-groups" onchange="toggleKidGroups()"> 🎨 子ども画面にも班の色を出す</label>
+        <label class="ck"><input type="checkbox" id="ck-show-flags" onchange="toggleShowFlags()"> 💡 配慮フラグを座席表に出す</label>
+        <span style="font-size:11.5px;color:var(--sub)">フラグは子ども画面には出ません</span>
+      </div>
       <div class="mode-bar" id="bar-del">🗑 削除モード中：席をタップで 空き／席 を切り替えます <button class="btn sm" onclick="toggleDel()">終了</button></div>
       <div class="mode-bar" id="bar-face">🔄 向き変更中：机をタップするたび 上→右→下→左 と回ります <button class="btn sm" onclick="clearFacing()">全部を上向きに</button><button class="btn sm" onclick="toggleFace()">終了</button></div>
       <div class="mode-bar" id="bar-grp">
@@ -716,7 +721,9 @@ var S={
   history:[],          // {t:日時, a:{seatId:name}}
   font:'maru', theme:'default', bgm:'none', sound:true,
   pin:'1234',          // 先生画面にもどるときのパスワード
-  screen:'t'           // 最後に開いていた画面（'t'=先生 'k'=子ども）
+  screen:'t',          // 最後に開いていた画面（'t'=先生 'k'=子ども）
+  kidGroups:false,     // 子ども画面にも班の色を出すか
+  showFlags:false      // 配慮フラグを先生画面の座席表に出すか（子ども画面には出さない）
 };
 var current={};        // 今の配置 {seatId:name}
 var uncommitted=false; // まだ統計に記録していない「新しい配置」かどうか
@@ -1014,6 +1021,25 @@ function clearNames(){
 }
 function toggleDel(){ setMode(mode==='del'?'':'del'); }
 function toggleFace(){ setMode(mode==='face'?'':'face'); }
+/* 配慮フラグを先生画面の座席表に出すかどうか。既定は出さない。
+   子ども画面には、この設定にかかわらず出さない（renderKGrid に描画自体がない）。 */
+function toggleShowFlags(){
+  S.showFlags=id('ck-show-flags').checked;
+  sndClick(); renderSeats(); save();
+}
+/* 子ども画面にも班の色を出すかどうか。班は児童に見せてよい情報なので任意。
+   発表の途中で切り替えても崩れないよう、描き直さず色だけ付け替える。 */
+function toggleKidGroups(){
+  S.kidGroups=id('ck-kid-groups').checked;
+  sndClick(); save();
+  ['rv-grid','obo-grid'].forEach(function(g){
+    for(var r=0;r<S.rows;r++)for(var c=0;c<S.cols;c++){
+      var x=cell(r,c); if(!x||!x.on)continue;
+      var el=id(g+'-'+sid(r,c));
+      if(el) el.setAttribute('data-g',(S.kidGroups&&x.group)||0);
+    }
+  });
+}
 function toggleGrp(){ setMode(mode==='grp'?'':'grp'); }
 function toggleSex(){ setMode(mode==='sex'?'':'sex'); }
 function setMode(m){
@@ -1173,7 +1199,7 @@ function renderSeats(){
          deskSvg(x.facing)+
          sexMark(x.sex)+
          '<div class="dnum">'+n+'番</div>'+
-         '<div class="dflags">'+flagIcons(nm)+'</div>'+
+         (S.showFlags?'<div class="dflags">'+flagIcons(nm)+'</div>':'')+
          '<div class="dname'+(nm?'':' blank')+'" style="font-size:'+(nm?nameFont(nm):15)+'px">'+
            (nm?esc(nm):'空席')+'</div>'+
          '</div>';
@@ -2004,7 +2030,7 @@ function renderKGrid(gridId,hidden){
       n++;
       var nm=current[sid(r,c)]||'';
       var cls='cellbox seat'+(hidden?' veil':(nm?' has-name':''))+(isFrontRow(r)?' vrow':'');
-      h+='<div class="'+cls+'" data-f="'+x.facing+'" id="'+gridId+'-'+sid(r,c)+'">'+
+      h+='<div class="'+cls+'" data-f="'+x.facing+'" data-g="'+((S.kidGroups&&x.group)||0)+'" id="'+gridId+'-'+sid(r,c)+'">'+
          deskSvg(x.facing)+
          '<div class="dnum">'+n+'番</div>'+
          /* 子ども画面には配慮フラグを出さない（人に見せてよい情報ではない） */
@@ -2188,6 +2214,8 @@ function applyAllFromState(){
   id('in-rows').value=S.rows; id('in-cols').value=S.cols;
   id('vision-rows').value=S.visionRows||2;
   id('chk-sound').checked=S.sound!==false;
+  id('ck-kid-groups').checked=!!S.kidGroups;
+  id('ck-show-flags').checked=!!S.showFlags;
   id('roster-ta').value=S.students.join('\n');
   id('roster-stat').textContent=S.students.length?S.students.length+'人':'';
   id('num-card').style.display=S.students.length?'block':'none';
