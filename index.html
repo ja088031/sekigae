@@ -116,6 +116,7 @@ label.ck{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;cursor:
   flex:0 0 auto;background:#ffe6e6;color:#a13030;border:1.5px solid #ffc4c4;
   border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:700;white-space:nowrap;
 }
+.sep-row .dist.near{background:#e4f7ea;color:#1f6b3a;border-color:#a8dfbc}
 .sep-row .mv{
   flex:0 0 auto;width:26px;height:26px;padding:0;font-size:12px;border-radius:8px;
   border:1.5px solid var(--line);background:#fff;color:var(--text);cursor:pointer;font-family:inherit;
@@ -443,7 +444,7 @@ table.heat thead th{top:0;z-index:2}
         <button class="btn primary big" onclick="runSmart()">✨ スマート配置</button>
         <button class="btn" onclick="runRandom()">🎲 完全ランダム</button>
         <label class="ck"><input type="checkbox" id="ck-keep-vision" checked> 視力配慮を守る</label>
-        <label class="ck"><input type="checkbox" id="ck-keep-sep" checked> 離す指定を守る</label>
+        <label class="ck"><input type="checkbox" id="ck-keep-sep" checked> 組み合わせの指定を守る</label>
         <label class="ck"><input type="checkbox" id="ck-keep-sex" checked> 男女席を守る</label>
       </div>
       <div id="smart-status" style="margin-top:8px;font-size:12px;font-weight:700;color:var(--accent-d)"></div>
@@ -501,9 +502,9 @@ table.heat thead th{top:0;z-index:2}
       <div id="vision-list"></div>
     </div>
     <div class="card">
-      <h2>↔️ 離す組み合わせ</h2>
+      <h2>↔️ 席の組み合わせ（離す・近づける）</h2>
       <div class="hint">
-        選んだ2人を、指定したマス数以上はなして配置します。<br>
+        選んだ2人を、はなして置くか、近づけて置くかを指定できます。<br>
         <b>たて・よこに何マス動けば着くかで数えます。</b>
         前後左右のとなりが1マス、ななめは「たて1＋よこ1」で2マスです。<br>
         組み合わせが増えると全部は満たせないことがあります。<b>▲▼で並べかえると、上にあるものから優先して守ります。</b>
@@ -511,14 +512,11 @@ table.heat thead th{top:0;z-index:2}
       <div class="row" style="margin-bottom:8px">
         <select id="sep-a"></select><span>と</span><select id="sep-b"></select>
         <span>を</span>
-        <select id="sep-d">
-          <option value="2">2マス以上（前後左右のとなりにしない）</option>
-          <option value="3">3マス以上（ななめもさける）</option>
-          <option value="4">4マス以上</option>
-          <option value="5">5マス以上</option>
-          <option value="6">6マス以上（かなり遠く）</option>
+        <select id="sep-kind" onchange="renderSepDistOptions()">
+          <option value="far">↔️ はなす</option>
+          <option value="near">🤝 近づける</option>
         </select>
-        <span>はなす</span>
+        <select id="sep-d"></select>
         <button class="btn sm primary" onclick="addSep()">＋ 追加</button>
       </div>
       <div id="sep-list"></div>
@@ -1375,20 +1373,41 @@ function renderVision(){
     ? eye.map(function(n){ return '<span class="tag tag-o">👓 '+esc(n)+'</span>'; }).join('')
     : '<span style="font-size:12px;color:var(--sub)">まだ対象がいません。名簿タブで 👓 を付けてください。</span>';
 }
-/* 古い保存データは [a,b] の形なので、既定の2マスを補う */
+/* 保存データの形をそろえる。
+   古い [a,b] は「2マス以上はなす」、[a,b,d] は「dマス以上はなす」として補う。 */
 function normalizeSeps(){
   S.seps=(S.seps||[]).map(function(p){
-    return [p[0],p[1],(p.length>2&&p[2]>=2)?(0|p[2]):2];
+    var kind=(p.length>3&&p[3]==='near')?'near':'far';
+    var d=(p.length>2&&p[2]>=1)?(0|p[2]):(kind==='near'?1:2);
+    return [p[0],p[1],d,kind];
   });
 }
-function sepDist(p){ return (p.length>2&&p[2]>=2)?(0|p[2]):2; }
+function sepDist(p){ return (p.length>2&&p[2]>=1)?(0|p[2]):2; }
+function sepKind(p){ return (p.length>3&&p[3]==='near')?'near':'far'; }
+function sepLabel(p){
+  return sepKind(p)==='near'
+    ? (sepDist(p)===1?'となり合わせ':sepDist(p)+'マス以内')
+    : sepDist(p)+'マス以上';
+}
+/* 「離す」と「近づける」で選べる距離が変わるので、そのつど作り直す */
+function renderSepDistOptions(){
+  var kind=id('sep-kind').value, sel=id('sep-d'), cur=sel.value;
+  var opts = (kind==='near')
+    ? [[1,'となり合わせ（1マス以内）'],[2,'2マス以内'],[3,'3マス以内']]
+    : [[2,'2マス以上（前後左右のとなりにしない）'],[3,'3マス以上（ななめもさける）'],
+       [4,'4マス以上'],[5,'5マス以上'],[6,'6マス以上（かなり遠く）']];
+  sel.innerHTML=opts.map(function(o){return '<option value="'+o[0]+'">'+o[1]+'</option>';}).join('');
+  if(opts.some(function(o){return String(o[0])===cur;})) sel.value=cur;
+}
 function addSep(){
-  var a=id('sep-a').value, b=id('sep-b').value, d=parseInt(id('sep-d').value)||2;
+  var a=id('sep-a').value, b=id('sep-b').value;
+  var kind=id('sep-kind').value==='near'?'near':'far';
+  var d=parseInt(id('sep-d').value)||(kind==='near'?1:2);
   if(!a||!b||a===b)return;
   var k=pairKey(a,b);
   var cur=S.seps.filter(function(p){return pairKey(p[0],p[1])===k;})[0];
-  if(cur) cur[2]=d;                      // 同じ組み合わせなら距離を更新する
-  else S.seps.push([a,b,d]);
+  if(cur){ cur[2]=d; cur[3]=kind; }      // 同じ組み合わせなら中身を更新する
+  else S.seps.push([a,b,d,kind]);
   sndSelect(); renderSeps(); save();
 }
 function removeSep(i){ S.seps.splice(i,1); sndDelete(); renderSeps(); save(); }
@@ -1408,10 +1427,11 @@ function renderSeps(){
   var h='<div style="font-size:11.5px;color:var(--sub);margin-bottom:6px">'+
         '上にあるものほど優先されます（1番が最優先）</div>';
   S.seps.forEach(function(p,i){
+    var near=sepKind(p)==='near';
     h+='<div class="sep-row">'+
        '<span class="sep-no">'+(i+1)+'</span>'+
        '<span class="nm">'+esc(p[0])+' ↔ '+esc(p[1])+'</span>'+
-       '<span class="dist">'+sepDist(p)+'マス以上</span>'+
+       '<span class="dist'+(near?' near':'')+'">'+(near?'🤝 ':'↔️ ')+sepLabel(p)+'</span>'+
        '<button class="mv" onclick="moveSep('+i+',-1)" title="優先度を上げる"'+(i===0?' disabled':'')+'>▲</button>'+
        '<button class="mv" onclick="moveSep('+i+',1)" title="優先度を下げる"'+(i===last?' disabled':'')+'>▼</button>'+
        '<button class="del" onclick="removeSep('+i+')" title="削除">×</button>'+
@@ -1471,13 +1491,15 @@ function buildCtx(){
   var keepV=id('ck-keep-vision').checked, keepS=id('ck-keep-sep').checked;
   var keepX=id('ck-keep-sex').checked;
   var vs=visionSet();
-  // 離す指定。並び順が優先順位（先頭ほど強い）
-  var sepSet={}, sepWtSet={}, maxReq=0;
+  // 組み合わせのきまり（はなす／近づける）。並び順が優先順位で、先頭ほど強い。
+  // 児童ごとに持たせておき、探索中は相手の席をひいて距離を見るだけにする。
+  var nameIdx={}; names.forEach(function(nm,k){ nameIdx[nm]=k; });
+  var rules=[];
   if(keepS) S.seps.forEach(function(p,rank){
-    var d=sepDist(p), k=pairKey(p[0],p[1]);
-    sepSet[k]=d;
-    sepWtSet[k]=Math.max(0.06,Math.pow(0.45,rank));
-    if(d>maxReq) maxReq=d;
+    var ia=nameIdx[p[0]], ib=nameIdx[p[1]];
+    if(ia===undefined||ib===undefined||ia===ib) return;   // 名簿にいない子は無視
+    rules.push({a:ia, b:ib, req:sepDist(p), near:(sepKind(p)==='near'),
+                w:Math.max(0.06,Math.pow(0.45,rank))});
   });
   var i,j,n,s;
 
@@ -1504,21 +1526,25 @@ function buildCtx(){
   }
   // 児童 × 児童（隣り合ったとき）の点数表＝これまで隣になった回数
   var pairCost=new Float64Array(M*M);
-  // 児童 × 児童 の「何マス以上はなすか」。0なら指定なし
-  var sepReq=new Int32Array(M*M);
-  var sepWt=new Float64Array(M*M);      // 優先順位の重み
-  var hasSep=new Uint8Array(M);
   for(i=0;i<N;i++)for(j=i+1;j<N;j++){
-    var k=pairKey(names[i],names[j]);
-    var pv=(S.adj[k]||0)*10;
+    var pv=(S.adj[pairKey(names[i],names[j])]||0)*10;
     pairCost[i*M+j]=pv; pairCost[j*M+i]=pv;
-    var req=sepSet[k]||0;
-    if(req){
-      sepReq[i*M+j]=req; sepReq[j*M+i]=req;
-      sepWt[i*M+j]=sepWtSet[k]; sepWt[j*M+i]=sepWtSet[k];
-      hasSep[i]=1; hasSep[j]=1;
-    }
   }
+  // きまりを児童ごとにまとめる（CSR形式：探索中の走査を最小にする）
+  var ruleStart=new Int32Array(M+1), ruleCnt=new Int32Array(M);
+  rules.forEach(function(r){ ruleCnt[r.a]++; ruleCnt[r.b]++; });
+  for(n=0;n<M;n++) ruleStart[n+1]=ruleStart[n]+ruleCnt[n];
+  var total2=ruleStart[M];
+  var rulePartner=new Int32Array(total2), ruleReq=new Int32Array(total2);
+  var ruleNear=new Int8Array(total2), ruleW=new Float64Array(total2);
+  var fill=new Int32Array(M);
+  rules.forEach(function(r){
+    [[r.a,r.b],[r.b,r.a]].forEach(function(pair){
+      var at=ruleStart[pair[0]]+fill[pair[0]]++;
+      rulePartner[at]=pair[1]; ruleReq[at]=r.req;
+      ruleNear[at]=r.near?1:0; ruleW[at]=r.w;
+    });
+  });
   // フラグはビットで持つ（空席は0のまま）
   var fbits=new Int32Array(M);
   for(n=0;n<N;n++){
@@ -1538,17 +1564,13 @@ function buildCtx(){
   }
   // 隣接（前後左右）＝これまで隣になった回数を数える範囲
   var nbIdx=[], isNb=new Uint8Array(L*L);
-  // 離す指定に引っかかりうる範囲（指定した最大マス数より近い席すべて）
-  var farIdx=[];
   for(i=0;i<L;i++){
-    var lst=[], far=[];
+    var lst=[];
     for(j=0;j<L;j++){
       if(i===j)continue;
       if(isAdjSeat(seats[i],seats[j])){ lst.push(j); isNb[i*L+j]=1; }
-      if(maxReq && distTab[i*L+j]<maxReq) far.push(j);
     }
     nbIdx.push(new Int32Array(lst));
-    farIdx.push(new Int32Array(far));
   }
   // 班（2×2のまとまり）
   var quadOf=new Int32Array(L), quads=[], qmap={};
@@ -1565,7 +1587,9 @@ function buildCtx(){
   return {
     seats:seats, L:L, names:names, N:N, M:M, EMPTY:EMPTY,
     seatCost:seatCost, pairCost:pairCost, fbits:fbits,
-    sepReq:sepReq, sepWt:sepWt, hasSep:hasSep, distTab:distTab, farIdx:farIdx, maxReq:maxReq,
+    ruleStart:ruleStart, rulePartner:rulePartner, ruleReq:ruleReq,
+    ruleNear:ruleNear, ruleW:ruleW, anyRule:(rules.length>0),
+    distTab:distTab,
     nbIdx:nbIdx, isNb:isNb, quadOf:quadOf,
     quads:quads.map(function(g){return new Int32Array(g);}),
     frontSeats:frontSeats, backSeats:backSeats,
@@ -1579,9 +1603,10 @@ function searchAssign(ctx,restarts,iters){
   var L=ctx.L, M=ctx.M, N=ctx.N, EMPTY=ctx.EMPTY;
   var seatCost=ctx.seatCost, pairCost=ctx.pairCost, fbits=ctx.fbits;
   var nbIdx=ctx.nbIdx, isNb=ctx.isNb, quadOf=ctx.quadOf, quads=ctx.quads, QN=quads.length;
-  var sepReq=ctx.sepReq, sepWt=ctx.sepWt, hasSep=ctx.hasSep;
-  var distTab=ctx.distTab, farIdx=ctx.farIdx, anySep=ctx.maxReq>0;
+  var ruleStart=ctx.ruleStart, rulePartner=ctx.rulePartner, ruleReq=ctx.ruleReq;
+  var ruleNear=ctx.ruleNear, ruleW=ctx.ruleW, anyRule=ctx.anyRule, distTab=ctx.distTab;
   var arr=new Int32Array(L), best=new Int32Array(L), bestSc=Infinity;
+  var pos=new Int32Array(M);            // 児童 → 座っている席番号
   var i,j,k,t;
 
   function quadPen(qi){
@@ -1598,19 +1623,37 @@ function searchAssign(ctx,restarts,iters){
     if(c4>1)sc+=(c4-1)*(c4-1)*8;
     return sc;
   }
+  /* きまり（はなす／近づける）による点。
+     相手の席をひいて距離を見るだけなので、きまりの数だけしか回らない。 */
+  function rulePen(s,n){
+    var v=0;
+    for(var k2=ruleStart[n];k2<ruleStart[n+1];k2++){
+      var ps=pos[rulePartner[k2]];
+      if(ps<0)continue;                        // 相手が座っていない
+      var d=distTab[s*L+ps], req=ruleReq[k2];
+      if(ruleNear[k2]){ if(d>req) v+=(1200+(d-req)*800)*ruleW[k2]; }
+      else            { if(d<req) v+=(1200+(req-d)*800)*ruleW[k2]; }
+    }
+    return v;
+  }
   /* 席sに座る子の、まわりとの関係にかかる点。
-     隣接履歴は前後左右だけ、離す指定は指定マス数の範囲まで見る。
-     離す指定を持つ子はふつう数人なので、広いほうの走査はめったに動かない。 */
+     隣接履歴は前後左右だけ、きまりは相手との距離で見る。 */
   function partial(s){
     var n=arr[s], v=seatCost[s*M+n], base=n*M, x;
     var ns=nbIdx[s];
     for(x=0;x<ns.length;x++) v+=pairCost[base+arr[ns[x]]];
-    if(anySep&&hasSep[n]){
-      var fs=farIdx[s];
-      for(x=0;x<fs.length;x++){
-        var t2=fs[x], o=base+arr[t2], req=sepReq[o];
-        if(req){ var dd=distTab[s*L+t2]; if(dd<req) v+=(1200+(req-dd)*800)*sepWt[o]; }
-      }
+    if(anyRule) v+=rulePen(s,n);
+    return v;
+  }
+  /* 入れ替える2席の間にきまりがあると partial 同士で二重に数えるので、その分 */
+  function dupRule(a,b){
+    if(!anyRule)return 0;
+    var na=arr[a], nb2=arr[b], v=0;
+    for(var k2=ruleStart[na];k2<ruleStart[na+1];k2++){
+      if(rulePartner[k2]!==nb2)continue;
+      var d=distTab[a*L+b], req=ruleReq[k2];
+      if(ruleNear[k2]){ if(d>req) v+=(1200+(d-req)*800)*ruleW[k2]; }
+      else            { if(d<req) v+=(1200+(req-d)*800)*ruleW[k2]; }
     }
     return v;
   }
@@ -1620,18 +1663,23 @@ function searchAssign(ctx,restarts,iters){
       sc+=seatCost[x*M+arr[x]];
       var base=arr[x]*M, ns=nbIdx[x];
       for(y=0;y<ns.length;y++) if(ns[y]>x) sc+=pairCost[base+arr[ns[y]]];
-      if(anySep&&hasSep[arr[x]]){
-        var fs=farIdx[x];
-        for(y=0;y<fs.length;y++){
-          var t2=fs[y];
-          if(t2<=x)continue;
-          var o=base+arr[t2], req=sepReq[o];
-          if(req){ var dd=distTab[x*L+t2]; if(dd<req) sc+=(1200+(req-dd)*800)*sepWt[o]; }
+      if(anyRule){
+        var n=arr[x];
+        for(var k2=ruleStart[n];k2<ruleStart[n+1];k2++){
+          var ps=pos[rulePartner[k2]];
+          if(ps<0||ps<=x)continue;             // 同じきまりを二度数えない
+          var d=distTab[x*L+ps], req=ruleReq[k2];
+          if(ruleNear[k2]){ if(d>req) sc+=(1200+(d-req)*800)*ruleW[k2]; }
+          else            { if(d<req) sc+=(1200+(req-d)*800)*ruleW[k2]; }
         }
       }
     }
     for(x=0;x<QN;x++) sc+=quadPen(x);
     return sc;
+  }
+  function rebuildPos(){
+    for(var x=0;x<M;x++) pos[x]=-1;
+    for(x=0;x<L;x++) if(arr[x]<N) pos[arr[x]]=x;
   }
   var used=new Uint8Array(L);
   function fillRandom(){
@@ -1660,6 +1708,7 @@ function searchAssign(ctx,restarts,iters){
       if(pick<0) break;                        // 席が足りない
       used[pick]=1; arr[pick]=nm;
     }
+    rebuildPos();
   }
 
   for(t=0;t<restarts;t++){
@@ -1669,17 +1718,20 @@ function searchAssign(ctx,restarts,iters){
       if(a===b)continue;
       // a-b の組は partial(a) と partial(b) の両方に入るので、その分を1回引く
       var qa=quadOf[a], qb=quadOf[b], diffQ=(qa!==qb), adj=isNb[a*L+b];
-      var dAB=distTab[a*L+b], rq, o;    // a-b 間の距離は入れ替えても変わらない
-      var before=partial(a)+partial(b)+quadPen(qa);
+      var before=partial(a)+partial(b)+quadPen(qa)-dupRule(a,b);
       if(adj) before-=pairCost[arr[a]*M+arr[b]];
-      if(anySep){ o=arr[a]*M+arr[b]; rq=sepReq[o]; if(rq&&dAB<rq) before-=(1200+(rq-dAB)*800)*sepWt[o]; }
       if(diffQ) before+=quadPen(qb);
       var tmp=arr[a]; arr[a]=arr[b]; arr[b]=tmp;
-      var after=partial(a)+partial(b)+quadPen(qa);
+      if(arr[a]<N) pos[arr[a]]=a;
+      if(arr[b]<N) pos[arr[b]]=b;
+      var after=partial(a)+partial(b)+quadPen(qa)-dupRule(a,b);
       if(adj) after-=pairCost[arr[a]*M+arr[b]];
-      if(anySep){ o=arr[a]*M+arr[b]; rq=sepReq[o]; if(rq&&dAB<rq) after-=(1200+(rq-dAB)*800)*sepWt[o]; }
       if(diffQ) after+=quadPen(qb);
-      if(after>before){ tmp=arr[a]; arr[a]=arr[b]; arr[b]=tmp; }   // 悪くなったので戻す
+      if(after>before){                                   // 悪くなったので戻す
+        tmp=arr[a]; arr[a]=arr[b]; arr[b]=tmp;
+        if(arr[a]<N) pos[arr[a]]=a;
+        if(arr[b]<N) pos[arr[b]]=b;
+      }
     }
     var sc=total();
     if(sc<bestSc){ bestSc=sc; best.set(arr); }
@@ -1738,10 +1790,11 @@ function checkViolations(m){
       var sa=seats.filter(function(s){return m[s]===p[0];})[0];
       var sb=seats.filter(function(s){return m[s]===p[1];})[0];
       if(!sa||!sb)return;
-      var req=sepDist(p), d=seatDist(sa,sb);
-      if(d<req) sepBad.push((i+1)+'番目「'+p[0]+'↔'+p[1]+'」'+req+'マス必要／実際'+d+'マス');
+      var req=sepDist(p), d=seatDist(sa,sb), near=(sepKind(p)==='near');
+      if(near ? d>req : d<req)
+        sepBad.push((i+1)+'番目「'+p[0]+(near?'🤝':'↔️')+p[1]+'」'+sepLabel(p)+'にしたい／実際'+d+'マス');
     });
-    if(sepBad.length) out.push('離す指定が守れず：'+sepBad.join('、'));
+    if(sepBad.length) out.push('組み合わせの指定が守れず：'+sepBad.join('、'));
   }
   if(id('ck-keep-sex').checked){
     var sexBad=seats.filter(function(s){
@@ -2228,7 +2281,7 @@ function applyAllFromState(){
   id('num-card').style.display=S.students.length?'block':'none';
   ensureCells();
   renderSeats(); renderNumList(); renderVision(); renderSeps(); renderSexStat();
-  updateSelects(); renderConfBtns(); updateRound(); renderHistory(); renderPinHint();
+  updateSelects(); renderSepDistOptions(); renderConfBtns(); updateRound(); renderHistory(); renderPinHint();
   var m={}; activeSeats().forEach(function(s){ m[s]=S.cells[s].name||''; });
   current=m;
 }
