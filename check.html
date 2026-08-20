@@ -6,39 +6,50 @@
 <title>受信チェック</title>
 </head>
 <body style="font-family:sans-serif;padding:20px;line-height:1.9;font-size:14px">
-<h1 style="font-size:19px;color:#7c5cff">📥 受信チェック</h1>
-<p>この端末が、アプリ本体をどこまで受け取れているか調べます。</p>
+<h1 style="font-size:19px;color:#7c5cff">🔎 動作チェック</h1>
+<p>アプリを実際に動かして、どこで止まるか調べます。</p>
 <div id="out" style="background:#f4f2ff;padding:14px;border-radius:10px;white-space:pre-wrap;
      word-break:break-all;font-size:13px">調べています…</div>
 <p><button id="copy" style="font-size:16px;padding:12px 22px;border:none;border-radius:12px;
    background:#7c5cff;color:#fff;cursor:pointer">結果をコピー</button></p>
+<iframe id="fr" src="./index.html?probe=1" style="width:360px;height:260px;border:2px solid #ccc"></iframe>
 <script>
 var L=[];
 function show(){ document.getElementById('out').textContent=L.join('\n'); }
 L.push('端末: '+navigator.userAgent);
 L.push('時刻: '+new Date().toLocaleString('ja-JP'));
+L.push('保存データ: '+(localStorage.getItem('sekigae_v1')?(localStorage.getItem('sekigae_v1').length+'文字'):'なし'));
 show();
-fetch('./index.html?probe='+Math.random(), {cache:'no-store'})
- .then(function(r){
-   L.push('通信の結果: HTTP '+r.status);
-   L.push('種類: '+(r.headers.get('content-type')||'不明'));
-   return r.text();
- })
- .then(function(t){
-   L.push('受信した文字数: '+t.length);
-   L.push('期待される文字数: おおよそ 103600');
-   L.push('');
-   L.push('<style>の終わりがある: '+(t.indexOf('</style>')>=0?'はい':'いいえ ← ここで切れています'));
-   L.push('<script>の終わりがある: '+(t.indexOf('</'+'script>')>=0?'はい':'いいえ ← ここで切れています'));
-   L.push('</html>で終わっている: '+(t.trim().slice(-7)==='</html>'?'はい':'いいえ ← 途中で切れています'));
-   L.push('');
-   L.push('末尾の30文字: '+JSON.stringify(t.slice(-30)));
-   show();
- })
- .catch(function(e){
-   L.push('通信に失敗: '+e.message);
-   show();
- });
+
+var fr=document.getElementById('fr');
+fr.onload=function(){
+  setTimeout(function(){
+    try{
+      var w=fr.contentWindow, d=fr.contentDocument;
+      L.push('');
+      L.push('=== アプリの中の様子 ===');
+      L.push('起動できた: '+(w.__booted?'はい':'いいえ'));
+      L.push('エラー画面: '+(d.getElementById('boot-reset')?'出ている':'出ていない'));
+      L.push('警告バナー: '+(d.getElementById('bw-copy')?'出ている':'出ていない'));
+      var b=d.body;
+      L.push('bodyの高さ: '+(b?b.offsetHeight:'?'));
+      L.push('見える文字数: '+(b?b.innerText.trim().length:'?'));
+      var t=d.getElementById('scr-t');
+      if(t){
+        var cs=w.getComputedStyle(t);
+        L.push('先生画面 class: '+t.className);
+        L.push('先生画面 display: '+cs.display+' / 高さ: '+Math.round(t.getBoundingClientRect().height));
+      }else L.push('先生画面の要素が無い');
+      L.push('机の数: '+d.querySelectorAll('#seat-grid .cellbox').length);
+      L.push('起動時の警告: '+((w.bootWarnings&&w.bootWarnings.length)?w.bootWarnings.join(' | '):'なし'));
+      L.push('本文の先頭: '+JSON.stringify((b?b.innerText:'').replace(/\s+/g,' ').slice(0,120)));
+    }catch(e){ L.push('中を見られません: '+e.message); }
+    show();
+  },1500);
+};
+window.addEventListener('message',function(ev){
+  if(ev.data&&ev.data.__err){ L.push('アプリ内のエラー: '+ev.data.__err); show(); }
+});
 document.getElementById('copy').onclick=function(){
   var ta=document.createElement('textarea');
   ta.value=L.join('\n'); document.body.appendChild(ta); ta.select();
