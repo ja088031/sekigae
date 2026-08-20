@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>受信チェック</title>
+</head>
+<body style="font-family:sans-serif;padding:20px;line-height:1.9;font-size:14px">
+<h1 style="font-size:19px;color:#7c5cff">📥 受信チェック</h1>
+<p>この端末が、アプリ本体をどこまで受け取れているか調べます。</p>
+<div id="out" style="background:#f4f2ff;padding:14px;border-radius:10px;white-space:pre-wrap;
+     word-break:break-all;font-size:13px">調べています…</div>
+<p><button id="copy" style="font-size:16px;padding:12px 22px;border:none;border-radius:12px;
+   background:#7c5cff;color:#fff;cursor:pointer">結果をコピー</button></p>
+<script>
+var L=[];
+function show(){ document.getElementById('out').textContent=L.join('\n'); }
+L.push('端末: '+navigator.userAgent);
+L.push('時刻: '+new Date().toLocaleString('ja-JP'));
+show();
+fetch('./index.html?probe='+Math.random(), {cache:'no-store'})
+ .then(function(r){
+   L.push('通信の結果: HTTP '+r.status);
+   L.push('種類: '+(r.headers.get('content-type')||'不明'));
+   return r.text();
+ })
+ .then(function(t){
+   L.push('受信した文字数: '+t.length);
+   L.push('期待される文字数: おおよそ 103600');
+   L.push('');
+   L.push('<style>の終わりがある: '+(t.indexOf('</style>')>=0?'はい':'いいえ ← ここで切れています'));
+   L.push('<script>の終わりがある: '+(t.indexOf('</'+'script>')>=0?'はい':'いいえ ← ここで切れています'));
+   L.push('</html>で終わっている: '+(t.trim().slice(-7)==='</html>'?'はい':'いいえ ← 途中で切れています'));
+   L.push('');
+   L.push('末尾の30文字: '+JSON.stringify(t.slice(-30)));
+   show();
+ })
+ .catch(function(e){
+   L.push('通信に失敗: '+e.message);
+   show();
+ });
+document.getElementById('copy').onclick=function(){
+  var ta=document.createElement('textarea');
+  ta.value=L.join('\n'); document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); this.textContent='コピーしました'; }catch(e){}
+  ta.remove();
+};
+</script>
+</body>
+</html>
