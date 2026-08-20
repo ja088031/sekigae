@@ -2058,7 +2058,8 @@ function renderHistory(){
   if(!S.history.length){id('hist-list').innerHTML='<div class="empty-state"><span class="ico">📅</span>まだ履歴がありません</div>';return;}
   var h='';
   S.history.forEach(function(x,i){
-    var cnt=Object.keys(x.a).filter(function(k){return x.a[k];}).length;
+    var a=x.a||{};
+    var cnt=Object.keys(a).filter(function(k){return a[k];}).length;
     h+='<div class="hist-row"><span style="font-weight:700">'+(S.history.length-i)+'</span>'+
        '<span class="d">'+esc(x.t)+'　'+cnt+'人</span>'+
        '<button class="btn sm" onclick="histView('+i+')">見る</button>'+
@@ -2073,7 +2074,7 @@ function histView(i){
   var h='<h3>'+esc(x.t)+'</h3><div class="board">こくばん</div>';
   h+='<div style="display:grid;gap:5px;grid-template-columns:repeat('+cols+',1fr)">';
   for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){
-    var n=x.a[sid(r,c)];
+    var n=(x.a||{})[sid(r,c)];
     h+='<div style="min-height:38px;border-radius:8px;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11.5px;'+
        (n?'background:#fff':'background:transparent;border-style:dashed')+'">'+(n?esc(n):'')+'</div>';
   }
@@ -2084,6 +2085,7 @@ function histRestore(i){
   var x=S.history[i]; if(!x)return;
   if(!confirm('この席替えの配置に戻しますか？（今の座席表は上書きされます）'))return;
   if(x.rows&&x.cols){ S.rows=x.rows; S.cols=x.cols; id('in-rows').value=x.rows; id('in-cols').value=x.cols; ensureCells(); }
+  if(!x.a){ alert('この履歴には配置が保存されていません。'); return; }
   applyAssignment(x.a);
   Object.keys(x.a).forEach(function(s){ if(S.cells[s]) S.cells[s].on=true; });
   renderSeats(); tab('seat',id('tabs').children[0]); sndSelect(); save();
@@ -2375,24 +2377,75 @@ function renderOboDots(){
 /* =========================================================
    起動
    ========================================================= */
+/* 起動時に1か所でも失敗すると画面が真っ白になっていたので、
+   工程ごとに区切って、失敗しても残りは動かす。 */
+var bootWarnings=[];
+function safeStep(label,fn){
+  try{ fn(); }catch(e){ bootWarnings.push(label+' … '+((e&&e.message)||e)); }
+}
 function applyAllFromState(){
-  normalizeSeps(); migrateVision();
-  document.body.dataset.theme=S.theme||'default';
-  document.body.dataset.font=S.font||'maru';
-  id('in-rows').value=S.rows; id('in-cols').value=S.cols;
-  id('vision-rows').value=S.visionRows||2;
-  id('chk-sound').checked=S.sound!==false;
-  id('ck-kid-groups').checked=!!S.kidGroups;
-  id('ck-show-flags').checked=!!S.showFlags;
-  id('ck-keep-sn').checked=S.keepSN!==false;
-  id('roster-ta').value=S.students.join('\n');
-  id('roster-stat').textContent=S.students.length?S.students.length+'人':'';
-  id('num-card').style.display=S.students.length?'block':'none';
-  ensureCells();
-  renderSeats(); renderNumList(); renderVision(); renderSeps(); renderSexStat();
-  updateSelects(); renderSepDraft(); renderSepDistOptions(); renderFlagLegend(); renderConfBtns(); updateRound(); renderHistory(); renderPinHint();
-  var m={}; activeSeats().forEach(function(s){ m[s]=S.cells[s].name||''; });
-  current=m;
+  safeStep('データの形式そろえ',function(){ normalizeSeps(); migrateVision(); });
+  safeStep('見た目の設定',function(){
+    document.body.dataset.theme=S.theme||'default';
+    document.body.dataset.font=S.font||'maru';
+  });
+  safeStep('入力欄の復元',function(){
+    id('in-rows').value=S.rows; id('in-cols').value=S.cols;
+    id('vision-rows').value=S.visionRows||2;
+    id('chk-sound').checked=S.sound!==false;
+    id('ck-kid-groups').checked=!!S.kidGroups;
+    id('ck-show-flags').checked=!!S.showFlags;
+    id('ck-keep-sn').checked=S.keepSN!==false;
+  });
+  safeStep('名簿',function(){
+    if(!Array.isArray(S.students)) S.students=[];
+    id('roster-ta').value=S.students.join('\n');
+    id('roster-stat').textContent=S.students.length?S.students.length+'人':'';
+    id('num-card').style.display=S.students.length?'block':'none';
+  });
+  safeStep('座席',function(){ ensureCells(); renderSeats(); });
+  safeStep('出席番号一覧',renderNumList);
+  safeStep('視力配慮',renderVision);
+  safeStep('組み合わせ',renderSeps);
+  safeStep('男女の集計',renderSexStat);
+  safeStep('選択肢',function(){ updateSelects(); renderSepDraft(); renderSepDistOptions(); });
+  safeStep('フラグ凡例',renderFlagLegend);
+  safeStep('設定ボタン',renderConfBtns);
+  safeStep('回数表示',updateRound);
+  safeStep('履歴',renderHistory);
+  safeStep('パスワード表示',renderPinHint);
+  safeStep('今の配置',function(){
+    var m={}; activeSeats().forEach(function(s){ m[s]=S.cells[s].name||''; });
+    current=m;
+  });
+}
+/* 起動時にどこかで失敗した場合の知らせ。使用は続けられる。 */
+function showBootWarnings(){
+  if(!bootWarnings.length) return;
+  var txt='せきがえメーカー 起動時の警告\n'+
+          new Date().toLocaleString('ja-JP')+'\n'+navigator.userAgent+'\n\n'+
+          bootWarnings.join('\n');
+  var box=document.createElement('div');
+  box.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9998;background:#fff7e6;'+
+    'border-top:3px solid #e8a33d;padding:12px 14px;font-family:sans-serif;font-size:13px;'+
+    'line-height:1.8;max-height:55vh;overflow:auto;box-shadow:0 -4px 18px rgba(0,0,0,.15)';
+  box.innerHTML=
+    '<b style="color:#a35c00">⚠️ 一部のデータを読み込めませんでした</b>'+
+    '<div style="font-size:12px;color:#666">アプリは使えますが、下の内容を先生にお知らせください。</div>'+
+    '<pre style="background:#fff;border:1px solid #eadfc8;border-radius:8px;padding:10px;'+
+      'font-size:11.5px;white-space:pre-wrap;word-break:break-all;margin:8px 0">'+esc(txt)+'</pre>'+
+    '<button id="bw-copy" class="btn sm">内容をコピー</button> '+
+    '<button id="bw-save" class="btn sm">データを書き出す</button> '+
+    '<button id="bw-close" class="btn sm">閉じる</button>';
+  document.body.appendChild(box);
+  document.getElementById('bw-copy').onclick=function(){
+    var ta=document.createElement('textarea');
+    ta.value=txt; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); this.textContent='コピーしました'; }catch(e){}
+    ta.remove();
+  };
+  document.getElementById('bw-save').onclick=function(){ try{ exportData(); }catch(e){} };
+  document.getElementById('bw-close').onclick=function(){ box.remove(); };
 }
 /* 起動に失敗したときは、白い画面のままにせず理由を出して逃げ道を作る */
 function showBootError(e){
@@ -2435,7 +2488,8 @@ function init(){
     showBootError(e);
     return;
   }
-  document.addEventListener('keydown',function(e){
+  showBootWarnings();
+  document.addEventListener("keydown",function(e){
     if(pinThen&&id('overlay').classList.contains('on')){
       if(/^[0-9]$/.test(e.key)){ pinTap(e.key); e.preventDefault(); return; }
       if(e.key==='Backspace'){ pinBack(); e.preventDefault(); return; }
