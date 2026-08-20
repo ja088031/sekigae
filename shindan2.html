@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>診断2</title>
+</head>
+<body style="font-family:sans-serif;padding:18px;line-height:1.8;font-size:14px">
+<h1 style="font-size:19px;color:#7c5cff">🔎 診断（その2）</h1>
+<p>枠の中でアプリを起動して、中の様子を読み取ります。</p>
+<div id="out" style="background:#f4f2ff;padding:14px;border-radius:10px;white-space:pre-wrap;
+     word-break:break-all;font-size:12.5px">起動を待っています…</div>
+<p><button id="copy" style="font-size:16px;padding:12px 22px;border:none;border-radius:12px;
+   background:#7c5cff;color:#fff;cursor:pointer">結果をコピー</button></p>
+<p style="font-size:12px;color:#777">↓ この枠に座席表が出るかどうかも見てください</p>
+<iframe id="fr" src="./app.html" style="width:100%;max-width:420px;height:300px;border:2px solid #999"></iframe>
+<script>
+var L=[];
+function P(s){ L.push(s); document.getElementById('out').textContent=L.join('\n'); }
+P('端末: '+navigator.userAgent);
+P('時刻: '+new Date().toLocaleString('ja-JP'));
+try{ var sv=localStorage.getItem('sekigae_v1');
+  P('保存データ: '+(sv?sv.length+'文字':'なし')); }catch(e){ P('保存データ: 読めない'); }
+
+document.getElementById('fr').onload=function(){
+  var fr=this;
+  setTimeout(function(){
+    P('');
+    P('=== アプリの中 ===');
+    try{
+      var w=fr.contentWindow, d=fr.contentDocument;
+      if(!d){ P('中を読めません（別ドメイン扱い）'); return; }
+      P('起動フラグ: '+(w.__booted?'あり':'なし'));
+      P('エラー画面: '+(d.getElementById('boot-reset')?'出ている':'なし'));
+      P('警告バナー: '+(d.getElementById('bw-copy')?'出ている':'なし'));
+      P('bodyの高さ: '+(d.body?d.body.offsetHeight:'?'));
+      P('見える文字数: '+(d.body?d.body.innerText.trim().length:'?'));
+      var t=d.getElementById('scr-t'), k=d.getElementById('scr-k');
+      P('先生画面 class: '+(t?t.className:'要素なし'));
+      P('先生画面 display: '+(t?w.getComputedStyle(t).display:'?'));
+      P('子ども画面 class: '+(k?k.className:'要素なし'));
+      P('子ども画面 display: '+(k?w.getComputedStyle(k).display:'?'));
+      P('机の数: '+d.querySelectorAll('#seat-grid .cellbox').length);
+      P('スタイル規則数: '+(d.styleSheets[0]?d.styleSheets[0].cssRules.length:'読めない'));
+      P('S.screen: '+(w.S?w.S.screen:'Sなし'));
+      P('警告: '+((w.bootWarnings&&w.bootWarnings.length)?w.bootWarnings.join(' | '):'なし'));
+      P('本文先頭: '+JSON.stringify((d.body?d.body.innerText:'').replace(/\s+/g,' ').slice(0,100)));
+    }catch(e){ P('読み取り失敗: '+e.name+' '+e.message); }
+  },2000);
+};
+document.getElementById('copy').onclick=function(){
+  var ta=document.createElement('textarea');
+  ta.value=L.join('\n'); document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); this.textContent='コピーしました'; }catch(e){}
+  ta.remove();
+};
+</script>
+</body>
+</html>
