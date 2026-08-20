@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>接続テスト</title>
+</head>
+<body style="font-family:sans-serif;padding:24px;line-height:1.9">
+<h1 style="color:#7c5cff">✅ このページが見えています</h1>
+<p>ここが表示されているなら、<b>サイトは正常に届いています。</b></p>
+<hr>
+<h2 style="font-size:16px">端末の情報</h2>
+<div id="info" style="font-size:13px;background:#f4f2ff;padding:12px;border-radius:8px">
+  読み込み中…
+</div>
+<hr>
+<p><a href="./" style="font-size:18px">→ せきがえメーカーを開く</a></p>
+<script>
+var lines=[];
+lines.push('ブラウザ: '+navigator.userAgent);
+lines.push('画面幅: '+window.innerWidth+' px');
+try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); lines.push('保存機能: 使えます'); }
+catch(e){ lines.push('保存機能: 使えません（'+e.name+'）'); }
+lines.push('読み込み時刻: '+new Date().toLocaleString('ja-JP'));
+document.getElementById('info').innerHTML=lines.join('<br>');
+</script>
+</body>
+</html>
