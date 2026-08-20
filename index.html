@@ -446,6 +446,7 @@ table.heat thead th{top:0;z-index:2}
         <label class="ck"><input type="checkbox" id="ck-keep-vision" checked> 視力配慮を守る</label>
         <label class="ck"><input type="checkbox" id="ck-keep-sep" checked> 組み合わせの指定を守る</label>
         <label class="ck"><input type="checkbox" id="ck-keep-sex" checked> 男女席を守る</label>
+        <label class="ck"><input type="checkbox" id="ck-keep-sn" checked> 🏫 特別支援を同じ班にしない</label>
       </div>
       <div id="smart-status" style="margin-top:8px;font-size:12px;font-weight:700;color:var(--accent-d)"></div>
     </div>
@@ -481,7 +482,7 @@ table.heat thead th{top:0;z-index:2}
       <div class="hint">「男」「女」をタップすると性別が決まり、座席タブの男女席の指定に使われます。<br>
         絵文字をタップするとフラグが付き、スマート配置で同じ班に偏らないよう分散します。</div>
       <div class="row" style="font-size:11.5px;color:var(--sub);gap:12px">
-        <span>✨ リーダー</span><span>💯 学力上位</span><span>📚 支援が必要</span><span>🤝 配慮</span><span>👓 視力配慮</span>
+        <span id="flag-legend"></span>
       </div>
       <div class="num-list" id="num-list"></div>
     </div>
@@ -528,7 +529,7 @@ table.heat thead th{top:0;z-index:2}
       <div id="sep-list"></div>
     <div class="card">
       <h2>✅ フラグの分散チェック</h2>
-      <div class="hint">今の座席表で、フラグの子が班（2×2の4人）に偏っていないか確認します。</div>
+      <div class="hint">今の座席表で、フラグの子が同じ班に偏っていないか確認します。<br>班分けの色を塗ってあればその班、塗っていなければ2×2のまとまりを班とみなします。</div>
       <button class="btn sm" onclick="renderFlagCheck()">チェックする</button>
       <div id="flag-check" style="margin-top:8px"></div>
     </div>
@@ -693,7 +694,8 @@ var FLAGS=[
   {key:'high',  icon:'💯',label:'学力上位'},
   {key:'low',   icon:'📚',label:'支援が必要'},
   {key:'care',  icon:'🤝',label:'配慮'},
-  {key:'vision',icon:'👓',label:'視力配慮'}
+  {key:'vision',icon:'👓',label:'視力配慮'},
+  {key:'sn',    icon:'🏫',label:'特別支援学級在籍'}
 ];
 var FONTS=[
   {key:'maru',label:'まるゴシック'},{key:'gothic',label:'ゴシック'},
@@ -726,6 +728,7 @@ var S={
   pin:'1234',          // 先生画面にもどるときのパスワード
   screen:'t',          // 最後に開いていた画面（'t'=先生 'k'=子ども）
   kidGroups:false,     // 子ども画面にも班の色を出すか
+  keepSN:true,         // 特別支援学級在籍を同じ班にしないか
   showFlags:false      // 配慮フラグを先生画面の座席表に出すか（子ども画面には出さない）
 };
 var current={};        // 今の配置 {seatId:name}
@@ -856,6 +859,7 @@ function save(){
   clearTimeout(saveTimer); showSave('saving');
   S.visionRows=parseInt(id('vision-rows').value)||1;
   S.sound=id('chk-sound').checked;
+  S.keepSN=id('ck-keep-sn').checked;
   saveTimer=setTimeout(function(){
     try{ localStorage.setItem(KEY,JSON.stringify(S)); showSave('saved'); }
     catch(e){ id('save-ind').textContent='⚠️ 保存できません'; }
@@ -1320,6 +1324,12 @@ function loadSample(){
   names.forEach(function(n,i){ S.sex[n]=(i%2===0)?'m':'f'; });
   renderNumList(); renderSexStat(); sndSelect(); save();
 }
+function renderFlagLegend(){
+  var el=id('flag-legend'); if(!el)return;
+  el.innerHTML=FLAGS.map(function(f){
+    return '<span style="margin-right:12px;white-space:nowrap">'+f.icon+' '+f.label+'</span>';
+  }).join('');
+}
 function renderNumList(){
   var h='';
   S.students.forEach(function(n,i){
@@ -1476,13 +1486,25 @@ function renderSeps(){
   id('sep-list').innerHTML=h;
 }
 
-/* 2×2の班に分けたときの、フラグの偏りチェック */
+/* 「班」の定義。座席タブで班分けの色を塗ってあればそれを使い、
+   塗っていなければ 2×2 のまとまりを班とみなす。 */
+function usePaintedGroups(){
+  return activeSeats().some(function(s){ return S.cells[s].group>0; });
+}
 function quadGroups(){
   var qs={};
-  activeSeats().forEach(function(s){
-    var p=rc(s), k=(p.r>>1)+'-'+(p.c>>1);
-    (qs[k]=qs[k]||[]).push(s);
-  });
+  if(usePaintedGroups()){
+    activeSeats().forEach(function(s){
+      var g=S.cells[s].group;
+      if(!g)return;                       // 色が塗られていない席は班なし
+      (qs['g'+g]=qs['g'+g]||[]).push(s);
+    });
+  }else{
+    activeSeats().forEach(function(s){
+      var p=rc(s), k=(p.r>>1)+'-'+(p.c>>1);
+      (qs[k]=qs[k]||[]).push(s);
+    });
+  }
   return Object.keys(qs).map(function(k){return qs[k];});
 }
 function renderFlagCheck(){
@@ -1614,13 +1636,28 @@ function buildCtx(){
     }
     nbIdx.push(new Int32Array(lst));
   }
-  // 班（2×2のまとまり）
+  // 班。色を塗ってあればその班、なければ2×2のまとまり。
+  // 色を塗っていない席は「班なし」として quadOf を -1 にする。
+  var painted=usePaintedGroups();
   var quadOf=new Int32Array(L), quads=[], qmap={};
   for(s=0;s<L;s++){
-    var p=rc(seats[s]), key=(p.r>>1)+'-'+(p.c>>1);
+    var key;
+    if(painted){
+      var g=S.cells[seats[s]].group;
+      if(!g){ quadOf[s]=-1; continue; }
+      key='g'+g;
+    }else{
+      var p=rc(seats[s]); key=(p.r>>1)+'-'+(p.c>>1);
+    }
     if(qmap[key]===undefined){ qmap[key]=quads.length; quads.push([]); }
     quadOf[s]=qmap[key]; quads[qmap[key]].push(s);
   }
+  // 特別支援学級在籍を同じ班にしない指定
+  var snBit=0;
+  for(i=0;i<FLAGS.length;i++) if(FLAGS[i].key==='sn') snBit=(1<<i);
+  var snCount=0;
+  for(n=0;n<N;n++){ var fx=S.flags[names[n]]; if(fx&&fx.sn) snCount++; }
+  var keepSN = id('ck-keep-sn').checked && snCount>=2 && quads.length>0;
   var frontSeats=[], backSeats=[];
   for(s=0;s<L;s++) (isFrontRow(rc(seats[s]).r)?frontSeats:backSeats).push(s);
   var visionNames=[], otherNames=[];
@@ -1631,6 +1668,7 @@ function buildCtx(){
     seatCost:seatCost, pairCost:pairCost, fbits:fbits,
     ruleStart:ruleStart, rulePartner:rulePartner, ruleReq:ruleReq,
     ruleNear:ruleNear, ruleW:ruleW, anyRule:(rules.length>0),
+    snBit:snBit, keepSN:keepSN, painted:painted,
     distTab:distTab,
     nbIdx:nbIdx, isNb:isNb, quadOf:quadOf,
     quads:quads.map(function(g){return new Int32Array(g);}),
@@ -1647,22 +1685,33 @@ function searchAssign(ctx,restarts,iters){
   var nbIdx=ctx.nbIdx, isNb=ctx.isNb, quadOf=ctx.quadOf, quads=ctx.quads, QN=quads.length;
   var ruleStart=ctx.ruleStart, rulePartner=ctx.rulePartner, ruleReq=ctx.ruleReq;
   var ruleNear=ctx.ruleNear, ruleW=ctx.ruleW, anyRule=ctx.anyRule, distTab=ctx.distTab;
+  var snBit=ctx.snBit, keepSN=ctx.keepSN;
   var arr=new Int32Array(L), best=new Int32Array(L), bestSc=Infinity;
   var pos=new Int32Array(M);            // 児童 → 座っている席番号
   var i,j,k,t;
 
+  /* 班ごとの点。フラグが同じ班に集まると重くなる。
+     「特別支援学級在籍を同じ班にしない」が有効なときは、
+     その項目だけ実質の禁止として強い点を足す。 */
   function quadPen(qi){
-    var g=quads[qi], c0=0,c1=0,c2=0,c3=0,c4=0, sc=0;
+    if(qi<0) return 0;                     // 班に入っていない席
+    var g=quads[qi], c0=0,c1=0,c2=0,c3=0,c4=0,c5=0, sc=0;
     for(var x=0;x<g.length;x++){
       var f=fbits[arr[g[x]]];
       if(!f)continue;
-      if(f&1)c0++; if(f&2)c1++; if(f&4)c2++; if(f&8)c3++; if(f&16)c4++;
+      if(f&1)c0++; if(f&2)c1++; if(f&4)c2++; if(f&8)c3++; if(f&16)c4++; if(f&32)c5++;
     }
     if(c0>1)sc+=(c0-1)*(c0-1)*8;
     if(c1>1)sc+=(c1-1)*(c1-1)*8;
     if(c2>1)sc+=(c2-1)*(c2-1)*8;
     if(c3>1)sc+=(c3-1)*(c3-1)*8;
     if(c4>1)sc+=(c4-1)*(c4-1)*8;
+    if(c5>1)sc+=(c5-1)*(c5-1)*8;
+    if(keepSN){
+      var cs=0;
+      for(x=0;x<g.length;x++) if(fbits[arr[g[x]]]&snBit) cs++;
+      if(cs>1) sc+=(cs-1)*1200;
+    }
     return sc;
   }
   /* きまり（はなす／近づける）による点。
@@ -1845,6 +1894,15 @@ function checkViolations(m){
         worst.a+(near?'🤝':'↔️')+worst.b+'が'+worst.d+'マス');
     });
     if(sepBad.length) out.push('組み合わせの指定が守れず：'+sepBad.join('、'));
+  }
+  if(id('ck-keep-sn').checked){
+    var snBad=[];
+    quadGroups().forEach(function(g,i){
+      var who=g.map(function(s){return m[s];})
+               .filter(function(n){ return n&&S.flags[n]&&S.flags[n].sn; });
+      if(who.length>1) snBad.push('班'+(i+1)+'に'+who.join('・'));
+    });
+    if(snBad.length) out.push('🏫 特別支援が同じ班：'+snBad.join('、'));
   }
   if(id('ck-keep-sex').checked){
     var sexBad=seats.filter(function(s){
@@ -2326,12 +2384,13 @@ function applyAllFromState(){
   id('chk-sound').checked=S.sound!==false;
   id('ck-kid-groups').checked=!!S.kidGroups;
   id('ck-show-flags').checked=!!S.showFlags;
+  id('ck-keep-sn').checked=S.keepSN!==false;
   id('roster-ta').value=S.students.join('\n');
   id('roster-stat').textContent=S.students.length?S.students.length+'人':'';
   id('num-card').style.display=S.students.length?'block':'none';
   ensureCells();
   renderSeats(); renderNumList(); renderVision(); renderSeps(); renderSexStat();
-  updateSelects(); renderSepDraft(); renderSepDistOptions(); renderConfBtns(); updateRound(); renderHistory(); renderPinHint();
+  updateSelects(); renderSepDraft(); renderSepDistOptions(); renderFlagLegend(); renderConfBtns(); updateRound(); renderHistory(); renderPinHint();
   var m={}; activeSeats().forEach(function(s){ m[s]=S.cells[s].name||''; });
   current=m;
 }
