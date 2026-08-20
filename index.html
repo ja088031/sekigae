@@ -504,23 +504,28 @@ table.heat thead th{top:0;z-index:2}
     <div class="card">
       <h2>↔️ 席の組み合わせ（離す・近づける）</h2>
       <div class="hint">
-        選んだ2人を、はなして置くか、近づけて置くかを指定できます。<br>
+        えらんだ児童どうしを、はなして置くか、近づけて置くかを指定できます。<b>3人以上のグループも作れます。</b><br>
         <b>たて・よこに何マス動けば着くかで数えます。</b>
         前後左右のとなりが1マス、ななめは「たて1＋よこ1」で2マスです。<br>
-        組み合わせが増えると全部は満たせないことがあります。<b>▲▼で並べかえると、上にあるものから優先して守ります。</b>
+        グループの場合は<b>全員がおたがいに</b>その距離になるようにします。<br>
+        全部は満たせないことがあります。<b>▲▼で並べかえると、上にあるものから優先して守ります。</b>
       </div>
-      <div class="row" style="margin-bottom:8px">
-        <select id="sep-a"></select><span>と</span><select id="sep-b"></select>
+      <div class="row" style="margin-bottom:6px">
+        <select id="sep-a"></select>
+        <button class="btn sm" onclick="addSepMember()">＋ メンバー</button>
+        <button class="btn sm" onclick="clearSepDraft()">クリア</button>
+      </div>
+      <div id="sep-members" style="margin-bottom:8px"></div>
+      <div class="row" style="margin-bottom:10px">
         <span>を</span>
         <select id="sep-kind" onchange="renderSepDistOptions()">
           <option value="far">↔️ はなす</option>
           <option value="near">🤝 近づける</option>
         </select>
         <select id="sep-d"></select>
-        <button class="btn sm primary" onclick="addSep()">＋ 追加</button>
+        <button class="btn sm primary" id="sep-register" onclick="addSep()">この組を登録</button>
       </div>
       <div id="sep-list"></div>
-    </div>
     <div class="card">
       <h2>✅ フラグの分散チェック</h2>
       <div class="hint">今の座席表で、フラグの子が班（2×2の4人）に偏っていないか確認します。</div>
@@ -1302,7 +1307,7 @@ function onRoster(){
 }
 function clearRoster(){
   if(!confirm('名簿をすべて消しますか？'))return;
-  id('roster-ta').value=''; S.students=[]; S.flags={}; S.sex={}; S.vision=[]; S.seps=[];
+  id('roster-ta').value=''; S.students=[]; S.flags={}; S.sex={}; S.vision=[]; S.seps=[]; sepDraft=[];
   id('roster-stat').textContent=''; id('num-card').style.display='none';
   renderNumList(); renderVision(); renderSeps(); updateSelects(); sndDelete(); save();
 }
@@ -1350,7 +1355,7 @@ function eyeStudents(){
   return S.students.filter(function(n){ return S.flags[n]&&S.flags[n].vision; });
 }
 function updateSelects(){
-  ['sep-a','sep-b'].forEach(function(x){
+  ['sep-a'].forEach(function(x){
     var el=id(x); if(!el)return;
     var cur=el.value;
     el.innerHTML=S.students.map(function(n){return '<option>'+esc(n)+'</option>';}).join('');
@@ -1374,41 +1379,70 @@ function renderVision(){
     : '<span style="font-size:12px;color:var(--sub)">まだ対象がいません。名簿タブで 👓 を付けてください。</span>';
 }
 /* 保存データの形をそろえる。
-   古い [a,b] は「2マス以上はなす」、[a,b,d] は「dマス以上はなす」として補う。 */
+   きまりは {m:[名前…], d:マス数, k:'far'|'near'} で持つ。
+   古い [a,b] や [a,b,d] や [a,b,d,kind] の形はここで変換する。 */
 function normalizeSeps(){
   S.seps=(S.seps||[]).map(function(p){
+    if(p&&!Array.isArray(p)&&p.m) {
+      return {m:p.m.slice(), d:(p.d>=1?(0|p.d):2), k:(p.k==='near'?'near':'far')};
+    }
     var kind=(p.length>3&&p[3]==='near')?'near':'far';
     var d=(p.length>2&&p[2]>=1)?(0|p[2]):(kind==='near'?1:2);
-    return [p[0],p[1],d,kind];
-  });
+    return {m:[p[0],p[1]], d:d, k:kind};
+  }).filter(function(p){ return p.m.length>=2; });
 }
-function sepDist(p){ return (p.length>2&&p[2]>=1)?(0|p[2]):2; }
-function sepKind(p){ return (p.length>3&&p[3]==='near')?'near':'far'; }
+function sepDist(p){ return p.d>=1?(0|p.d):2; }
+function sepKind(p){ return p.k==='near'?'near':'far'; }
+function sepMembers(p){ return p.m||[]; }
 function sepLabel(p){
   return sepKind(p)==='near'
     ? (sepDist(p)===1?'となり合わせ':sepDist(p)+'マス以内')
     : sepDist(p)+'マス以上';
 }
-/* 「離す」と「近づける」で選べる距離が変わるので、そのつど作り直す */
+/* 登録前の下書き（メンバーを足していく） */
+var sepDraft=[];
+function addSepMember(){
+  var n=id('sep-a').value;
+  if(!n||sepDraft.indexOf(n)>=0)return;
+  sepDraft.push(n); sndSelect(); renderSepDraft(); renderSepDistOptions();
+}
+function removeSepMember(i){ sepDraft.splice(i,1); sndDelete(); renderSepDraft(); renderSepDistOptions(); }
+function clearSepDraft(){ sepDraft=[]; renderSepDraft(); renderSepDistOptions(); }
+function renderSepDraft(){
+  var el=id('sep-members');
+  el.innerHTML = sepDraft.length
+    ? sepDraft.map(function(n,i){
+        return '<span class="tag tag-o">'+esc(n)+' <button onclick="removeSepMember('+i+')">×</button></span>';
+      }).join('')
+    : '<span style="font-size:11.5px;color:var(--sub)">児童をえらんで「＋メンバー」を押してください（2人以上）</span>';
+  id('sep-register').disabled = sepDraft.length<2;
+}
+/* 「離す」「近づける」と人数で、選べる距離が変わる */
 function renderSepDistOptions(){
   var kind=id('sep-kind').value, sel=id('sep-d'), cur=sel.value;
-  var opts = (kind==='near')
-    ? [[1,'となり合わせ（1マス以内）'],[2,'2マス以内'],[3,'3マス以内']]
-    : [[2,'2マス以上（前後左右のとなりにしない）'],[3,'3マス以上（ななめもさける）'],
-       [4,'4マス以上'],[5,'5マス以上'],[6,'6マス以上（かなり遠く）']];
+  var opts;
+  if(kind==='near'){
+    // 3人以上を全員となり合わせにするのは、どう並べても無理なので出さない
+    opts = (sepDraft.length>=3)
+      ? [[2,'2マス以内（かたまって座る）'],[3,'3マス以内']]
+      : [[1,'となり合わせ（1マス以内）'],[2,'2マス以内'],[3,'3マス以内']];
+  }else{
+    opts = [[2,'2マス以上（前後左右のとなりにしない）'],[3,'3マス以上（ななめもさける）'],
+            [4,'4マス以上'],[5,'5マス以上'],[6,'6マス以上（かなり遠く）']];
+  }
   sel.innerHTML=opts.map(function(o){return '<option value="'+o[0]+'">'+o[1]+'</option>';}).join('');
   if(opts.some(function(o){return String(o[0])===cur;})) sel.value=cur;
 }
 function addSep(){
-  var a=id('sep-a').value, b=id('sep-b').value;
+  if(sepDraft.length<2)return;
   var kind=id('sep-kind').value==='near'?'near':'far';
-  var d=parseInt(id('sep-d').value)||(kind==='near'?1:2);
-  if(!a||!b||a===b)return;
-  var k=pairKey(a,b);
-  var cur=S.seps.filter(function(p){return pairKey(p[0],p[1])===k;})[0];
-  if(cur){ cur[2]=d; cur[3]=kind; }      // 同じ組み合わせなら中身を更新する
-  else S.seps.push([a,b,d,kind]);
-  sndSelect(); renderSeps(); save();
+  var d=parseInt(id('sep-d').value)||(kind==='near'?2:2);
+  var key=sepDraft.slice().sort().join('|');
+  var cur=S.seps.filter(function(p){ return sepMembers(p).slice().sort().join('|')===key; })[0];
+  if(cur){ cur.d=d; cur.k=kind; }        // 同じ顔ぶれなら中身を更新する
+  else S.seps.push({m:sepDraft.slice(), d:d, k:kind});
+  sepDraft=[]; renderSepDraft();
+  sndSelect(); renderSeps(); renderSepDistOptions(); save();
 }
 function removeSep(i){ S.seps.splice(i,1); sndDelete(); renderSeps(); save(); }
 /* 優先順位の入れかえ。上にあるものほど強く守られる */
@@ -1427,10 +1461,12 @@ function renderSeps(){
   var h='<div style="font-size:11.5px;color:var(--sub);margin-bottom:6px">'+
         '上にあるものほど優先されます（1番が最優先）</div>';
   S.seps.forEach(function(p,i){
-    var near=sepKind(p)==='near';
+    var near=sepKind(p)==='near', ms=sepMembers(p);
     h+='<div class="sep-row">'+
        '<span class="sep-no">'+(i+1)+'</span>'+
-       '<span class="nm">'+esc(p[0])+' ↔ '+esc(p[1])+'</span>'+
+       '<span class="nm">'+ms.map(esc).join(' ・ ')+
+         (ms.length>2?'<span style="font-weight:400;font-size:10.5px;color:var(--sub)"> '+ms.length+'人</span>':'')+
+       '</span>'+
        '<span class="dist'+(near?' near':'')+'">'+(near?'🤝 ':'↔️ ')+sepLabel(p)+'</span>'+
        '<button class="mv" onclick="moveSep('+i+',-1)" title="優先度を上げる"'+(i===0?' disabled':'')+'>▲</button>'+
        '<button class="mv" onclick="moveSep('+i+',1)" title="優先度を下げる"'+(i===last?' disabled':'')+'>▼</button>'+
@@ -1496,10 +1532,16 @@ function buildCtx(){
   var nameIdx={}; names.forEach(function(nm,k){ nameIdx[nm]=k; });
   var rules=[];
   if(keepS) S.seps.forEach(function(p,rank){
-    var ia=nameIdx[p[0]], ib=nameIdx[p[1]];
-    if(ia===undefined||ib===undefined||ia===ib) return;   // 名簿にいない子は無視
-    rules.push({a:ia, b:ib, req:sepDist(p), near:(sepKind(p)==='near'),
-                w:Math.max(0.06,Math.pow(0.45,rank))});
+    // グループは「中の全ペア」に同じ条件を課す。優先順位の重みも共通。
+    var ms=sepMembers(p).map(function(nm){ return nameIdx[nm]; })
+                        .filter(function(x){ return x!==undefined; });
+    if(ms.length<2) return;                                // 名簿にいる子が1人以下なら無視
+    var req=sepDist(p), near=(sepKind(p)==='near');
+    var w=Math.max(0.06,Math.pow(0.45,rank));
+    for(var x=0;x<ms.length;x++)for(var y=x+1;y<ms.length;y++){
+      if(ms[x]===ms[y])continue;
+      rules.push({a:ms[x], b:ms[y], req:req, near:near, w:w});
+    }
   });
   var i,j,n,s;
 
@@ -1787,12 +1829,20 @@ function checkViolations(m){
   if(id('ck-keep-sep').checked){
     var sepBad=[];
     S.seps.forEach(function(p,i){
-      var sa=seats.filter(function(s){return m[s]===p[0];})[0];
-      var sb=seats.filter(function(s){return m[s]===p[1];})[0];
-      if(!sa||!sb)return;
-      var req=sepDist(p), d=seatDist(sa,sb), near=(sepKind(p)==='near');
-      if(near ? d>req : d<req)
-        sepBad.push((i+1)+'番目「'+p[0]+(near?'🤝':'↔️')+p[1]+'」'+sepLabel(p)+'にしたい／実際'+d+'マス');
+      var ms=sepMembers(p), req=sepDist(p), near=(sepKind(p)==='near'), worst=null;
+      for(var x=0;x<ms.length;x++)for(var y=x+1;y<ms.length;y++){
+        var sa=seats.filter(function(s){return m[s]===ms[x];})[0];
+        var sb=seats.filter(function(s){return m[s]===ms[y];})[0];
+        if(!sa||!sb)continue;
+        var d=seatDist(sa,sb);
+        if(near ? d>req : d<req){
+          // いちばん外れているペアを代表として出す
+          var gap=near?(d-req):(req-d);
+          if(!worst||gap>worst.gap) worst={gap:gap,a:ms[x],b:ms[y],d:d};
+        }
+      }
+      if(worst) sepBad.push((i+1)+'番目「'+ms.join('・')+'」'+sepLabel(p)+'にしたい／'+
+        worst.a+(near?'🤝':'↔️')+worst.b+'が'+worst.d+'マス');
     });
     if(sepBad.length) out.push('組み合わせの指定が守れず：'+sepBad.join('、'));
   }
@@ -2281,7 +2331,7 @@ function applyAllFromState(){
   id('num-card').style.display=S.students.length?'block':'none';
   ensureCells();
   renderSeats(); renderNumList(); renderVision(); renderSeps(); renderSexStat();
-  updateSelects(); renderSepDistOptions(); renderConfBtns(); updateRound(); renderHistory(); renderPinHint();
+  updateSelects(); renderSepDraft(); renderSepDistOptions(); renderConfBtns(); updateRound(); renderHistory(); renderPinHint();
   var m={}; activeSeats().forEach(function(s){ m[s]=S.cells[s].name||''; });
   current=m;
 }
