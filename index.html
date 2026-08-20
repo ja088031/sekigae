@@ -332,7 +332,6 @@ table.heat thead th{top:0;z-index:2}
 .k-room{max-width:100%;margin:0 auto}
 /* 発表前の机は名前を隠す（机そのものは見えている） */
 .cellbox.veil .dname{color:transparent}
-.cellbox.veil .dflags{visibility:hidden}
 .cellbox.pop{animation:deskpop .55s cubic-bezier(.34,1.56,.64,1)}
 @keyframes deskpop{0%{transform:scale(.5) rotate(-8deg)}70%{transform:scale(1.15) rotate(3deg)}100%{transform:scale(1) rotate(0)}}
 .obo-dots{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:10px auto;max-width:420px}
@@ -887,7 +886,7 @@ function toKid(){
 function kReadyMsg(){
   var n=activeSeats().length, m=S.students.length;
   id('k-ready-msg').innerHTML='座席 '+n+'席 ／ 名簿 '+m+'人<br>'+
-    (uncommitted ? '✨ 新しい席ができています'
+    (uncommitted ? '🆕 新しい席ができています'
                  : '📌 発表ずみの席です（もう一度出しても記録は増えません）');
 }
 /* 子ども画面から席を作り直す */
@@ -2008,7 +2007,7 @@ function renderKGrid(gridId,hidden){
       h+='<div class="'+cls+'" data-f="'+x.facing+'" id="'+gridId+'-'+sid(r,c)+'">'+
          deskSvg(x.facing)+
          '<div class="dnum">'+n+'番</div>'+
-         '<div class="dflags">'+flagIcons(nm)+'</div>'+
+         /* 子ども画面には配慮フラグを出さない（人に見せてよい情報ではない） */
          '<div class="dname'+(nm?'':' blank')+'" style="font-size:'+(nm?nameFont(nm):15)+'px">'+
            (nm?esc(nm):'空席')+'</div>'+
          '</div>';
