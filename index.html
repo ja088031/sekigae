@@ -574,6 +574,18 @@ details.hlp>summary:hover{background:var(--accent-l)}
       <div id="sep-list"></div>
     </div>
     <div class="card">
+      <h2>🎯 フラグごとの班の散らし方</h2>
+      <div class="hint">
+        チェックを入れたフラグは、同じ班に集まらないように散らします。外すと配置に影響しなくなります。<br>
+        班は、座席タブで色を塗ってあればその班、塗っていなければ2×2のまとまりです。
+      </div>
+      <div class="row" id="spread-list" style="gap:14px"></div>
+      <div class="hint" style="margin:8px 0 0">
+        👓 視力配慮の「前の席にする」と、🏫 特別支援の「同じ班に2人以上入れない」は、
+        こことは別のきまりです。上のチェックを外しても、それぞれの働きは残ります。
+      </div>
+    </div>
+    <div class="card">
       <h2>✅ フラグの分散チェック</h2>
       <div class="hint">今の座席表で、フラグの子が同じ班に偏っていないか確認します。<br>班分けの色を塗ってあればその班、塗っていなければ2×2のまとまりを班とみなします。</div>
       <button class="btn sm" onclick="renderFlagCheck()">チェックする</button>
@@ -777,6 +789,7 @@ var S={
   pin:'1234',          // 先生画面にもどるときのパスワード
   screen:'t',          // 最後に開いていた画面（'t'=先生 'k'=子ども）
   kidGroups:false,     // 子ども画面にも班の色を出すか
+  spread:{},           // フラグごとに「同じ班に集めない」を効かせるか（未設定は有効）
   keepSN:true,         // 特別支援学級在籍を同じ班にしないか
   showFlags:false      // 配慮フラグを先生画面の座席表に出すか（子ども画面には出さない）
 };
@@ -1557,6 +1570,19 @@ function quadGroups(){
   }
   return Object.keys(qs).map(function(k){return qs[k];});
 }
+/* フラグごとに「同じ班に集めない」を効かせるかどうか。未設定は有効とみなす */
+function spreadOn(key){ return !S.spread || S.spread[key]!==false; }
+function renderSpread(){
+  var el=id('spread-list'); if(!el)return;
+  el.innerHTML=FLAGS.map(function(f){
+    return '<label class="ck"><input type="checkbox"'+(spreadOn(f.key)?' checked':'')+
+      ' onchange="toggleSpread(\''+f.key+'\',this.checked)"> '+f.icon+' '+esc(f.label)+'</label>';
+  }).join('');
+}
+function toggleSpread(k,v){
+  if(!S.spread) S.spread={};
+  S.spread[k]=v; sndClick(); save();
+}
 function renderFlagCheck(){
   var groups=quadGroups();
   if(!groups.length){ id('flag-check').innerHTML='<div class="empty-state">座席がありません</div>'; return; }
@@ -1708,6 +1734,9 @@ function buildCtx(){
   var snCount=0;
   for(n=0;n<N;n++){ var fx=S.flags[names[n]]; if(fx&&fx.sn) snCount++; }
   var keepSN = id('ck-keep-sn').checked && snCount>=2 && quads.length>0;
+  // 「散らす」を有効にしたフラグだけをビットで持つ
+  var spreadBits=0;
+  for(i=0;i<FLAGS.length;i++) if(spreadOn(FLAGS[i].key)) spreadBits|=(1<<i);
   var frontSeats=[], backSeats=[];
   for(s=0;s<L;s++) (isFrontRow(rc(seats[s]).r)?frontSeats:backSeats).push(s);
   var visionNames=[], otherNames=[];
@@ -1718,7 +1747,7 @@ function buildCtx(){
     seatCost:seatCost, pairCost:pairCost, fbits:fbits,
     ruleStart:ruleStart, rulePartner:rulePartner, ruleReq:ruleReq,
     ruleNear:ruleNear, ruleW:ruleW, anyRule:(rules.length>0),
-    snBit:snBit, keepSN:keepSN, painted:painted,
+    snBit:snBit, keepSN:keepSN, spreadBits:spreadBits, painted:painted,
     distTab:distTab,
     nbIdx:nbIdx, isNb:isNb, quadOf:quadOf,
     quads:quads.map(function(g){return new Int32Array(g);}),
@@ -1735,7 +1764,7 @@ function searchAssign(ctx,restarts,iters){
   var nbIdx=ctx.nbIdx, isNb=ctx.isNb, quadOf=ctx.quadOf, quads=ctx.quads, QN=quads.length;
   var ruleStart=ctx.ruleStart, rulePartner=ctx.rulePartner, ruleReq=ctx.ruleReq;
   var ruleNear=ctx.ruleNear, ruleW=ctx.ruleW, anyRule=ctx.anyRule, distTab=ctx.distTab;
-  var snBit=ctx.snBit, keepSN=ctx.keepSN;
+  var snBit=ctx.snBit, keepSN=ctx.keepSN, spreadBits=ctx.spreadBits;
   var arr=new Int32Array(L), best=new Int32Array(L), bestSc=Infinity;
   var pos=new Int32Array(M);            // 児童 → 座っている席番号
   var i,j,k,t;
@@ -1747,7 +1776,7 @@ function searchAssign(ctx,restarts,iters){
     if(qi<0) return 0;                     // 班に入っていない席
     var g=quads[qi], c0=0,c1=0,c2=0,c3=0,c4=0,c5=0, sc=0;
     for(var x=0;x<g.length;x++){
-      var f=fbits[arr[g[x]]];
+      var f=fbits[arr[g[x]]]&spreadBits;   // 散らす指定のあるフラグだけ数える
       if(!f)continue;
       if(f&1)c0++; if(f&2)c1++; if(f&4)c2++; if(f&8)c3++; if(f&16)c4++; if(f&32)c5++;
     }
@@ -2153,11 +2182,8 @@ function histDel(i){
    フラグ名・フォント名などは定義から組み立てるので、
    設定を変えてもこのページが古くならない。
    ========================================================= */
+/* 「散らす」以外に、そのフラグが持っている固有の働き */
 var HELP_EFFECT={
-  leader:'同じ班に集まらないよう散らす',
-  high:  '同じ班に集まらないよう散らす',
-  low:   '同じ班に集まらないよう散らす',
-  care:  '同じ班に集まらないよう散らす',
   vision:'<b>必ず前のほうの列にする</b>',
   sn:    '<b>同じ班に2人以上入れない</b>'
 };
@@ -2167,8 +2193,12 @@ function helpSection(title,body,open){
 }
 function renderHelp(){
   var flagRows=FLAGS.map(function(f){
+    var eff=[];
+    if(spreadOn(f.key)) eff.push('同じ班に集まらないよう散らす');
+    if(HELP_EFFECT[f.key]) eff.push(HELP_EFFECT[f.key]);
     return '<tr><td>'+f.icon+' '+esc(f.label)+'</td><td>'+
-           (HELP_EFFECT[f.key]||'同じ班に集まらないよう散らす')+'</td></tr>';
+           (eff.length?eff.join('<br>'):'<span style="color:var(--sub)">配置には影響しない（印だけ）</span>')+
+           '</td></tr>';
   }).join('');
   var h='';
 
@@ -2195,7 +2225,11 @@ function renderHelp(){
     '子ども画面にはフラグは一切出ません。先生画面の座席表でも初期状態では出ないので、'+
     '確認したいときだけ座席タブの「💡 配慮フラグを座席表に出す」をオンにしてください。</div>'+
     '<p>男女の設定は、座席タブで男子席・女子席を指定するときに使います。'+
-    '設定しなかった子は、どの席にも座れる扱いです。</p>');
+    '設定しなかった子は、どの席にも座れる扱いです。</p>'+
+    '<div class="hlp-note"><div class="h">💡 散らすかどうかは選べます</div>'+
+    '上の表は今の設定を映しています。<b>配慮タブの「🎯 フラグごとの班の散らし方」</b>で、'+
+    'フラグごとに散らすかどうかを切り替えられます。'+
+    '記録として印だけ付けておきたいフラグは、外しておいてください。</div>');
 
   h+=helpSection('🪑 座席タブ',
     '<p>プリセットで机の数を決めたあと、空きマスの「＋」で席を増やせます。'+
@@ -2625,6 +2659,7 @@ function applyAllFromState(){
   safeStep('視力配慮',renderVision);
   safeStep('組み合わせ',renderSeps);
   safeStep('男女の集計',renderSexStat);
+  safeStep('班の散らし方',function(){ if(!S.spread)S.spread={}; renderSpread(); });
   safeStep('選択肢',function(){ updateSelects(); renderSepDraft(); renderSepDistOptions(); });
   safeStep('フラグ凡例',renderFlagLegend);
   safeStep('設定ボタン',renderConfBtns);
