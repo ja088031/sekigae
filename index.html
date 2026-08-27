@@ -453,8 +453,8 @@ details.hlp>summary:hover{background:var(--accent-l)}
       </div>
       <div class="row" style="margin-bottom:8px">
         <label class="ck"><input type="checkbox" id="ck-kid-groups" onchange="toggleKidGroups()"> 🎨 子ども画面にも班の色を出す</label>
-        <label class="ck"><input type="checkbox" id="ck-show-flags" onchange="toggleShowFlags()"> 💡 配慮フラグを座席表に出す</label>
-        <span style="font-size:11.5px;color:var(--sub)">フラグは子ども画面には出ません</span>
+        <label class="ck"><input type="checkbox" id="ck-show-flags" onchange="toggleShowFlags()"> 💡 配慮の情報を座席表に出す</label>
+        <span style="font-size:11.5px;color:var(--sub)">フラグと前列の色分け。子ども画面には出ません</span>
       </div>
       <div class="mode-bar" id="bar-del">🗑 削除モード中：席をタップで 空き／席 を切り替えます <button class="btn sm" onclick="toggleDel()">終了</button></div>
       <div class="mode-bar" id="bar-face">🔄 向き変更中：机をタップするたび 上→右→下→左 と回ります <button class="btn sm" onclick="clearFacing()">全部を上向きに</button><button class="btn sm" onclick="toggleFace()">終了</button></div>
@@ -1091,8 +1091,8 @@ function clearNames(){
 }
 function toggleDel(){ setMode(mode==='del'?'':'del'); }
 function toggleFace(){ setMode(mode==='face'?'':'face'); }
-/* 配慮フラグを先生画面の座席表に出すかどうか。既定は出さない。
-   子ども画面には、この設定にかかわらず出さない（renderKGrid に描画自体がない）。 */
+/* 配慮の情報（フラグと前列の色分け）を先生画面の座席表に出すかどうか。既定は出さない。
+   子ども画面には、この設定にかかわらず出さない。 */
 function toggleShowFlags(){
   S.showFlags=id('ck-show-flags').checked;
   sndClick(); renderSeats(); save();
@@ -1260,7 +1260,7 @@ function renderSeats(){
       var nm=x.name||'';
       var cls='cellbox seat';
       if(nm) cls+=' has-name';
-      if(isFrontRow(r)) cls+=' vrow';
+      if(S.showFlags && isFrontRow(r)) cls+=' vrow';   // 配慮の情報を出すときだけ前列を色分け
       if(mode==='del') cls+=' delmode';
       if(mode==='sex') cls+=' sexmode';
       h+='<div class="'+cls+'" data-f="'+x.facing+'" data-g="'+(x.group||0)+'" data-s="'+(x.sex||'')+'"'+
@@ -2221,9 +2221,10 @@ function renderHelp(){
     '<p>名前を入れると、下に一人ずつの設定欄が出ます。「男」「女」と絵文字をタップすると色がつき、'+
     'もう一度タップで解除できます。</p>'+
     '<table class="hlp-tbl"><tr><th>印</th><th>配置への効き方</th></tr>'+flagRows+'</table>'+
-    '<div class="hlp-note warn"><div class="h">⚠️ フラグは子どもに見せません</div>'+
-    '子ども画面にはフラグは一切出ません。先生画面の座席表でも初期状態では出ないので、'+
-    '確認したいときだけ座席タブの「💡 配慮フラグを座席表に出す」をオンにしてください。</div>'+
+    '<div class="hlp-note warn"><div class="h">⚠️ 配慮の情報は子どもに見せません</div>'+
+    '子ども画面には、フラグも前列の色分けも一切出ません。'+
+    '先生画面の座席表でも初期状態では出ないので、'+
+    '確認したいときだけ座席タブの「💡 配慮の情報を座席表に出す」をオンにしてください。</div>'+
     '<p>男女の設定は、座席タブで男子席・女子席を指定するときに使います。'+
     '設定しなかった子は、どの席にも座れる扱いです。</p>'+
     '<div class="hlp-note"><div class="h">💡 散らすかどうかは選べます</div>'+
@@ -2240,8 +2241,11 @@ function renderHelp(){
     '<tr><td>🎨 班分け</td><td>色を選んで机をなぞると班になる（8色）</td></tr>'+
     '<tr><td>♂♀ 男女席</td><td>男子席・女子席を指定。市松などの一括設定つき</td></tr>'+
     '</table>'+
-    '<p><b>机の色の意味</b>：黄色は視力配慮の前列、水色は名前が入っている席、木の色は空席です。'+
+    '<p><b>机の色の意味</b>：水色は名前が入っている席、木の色は空席です。'+
     '班の色を塗ると、その色が優先されます。</p>'+
+    '<p>「💡 配慮の情報を座席表に出す」をオンにすると、フラグの絵文字が出て、'+
+    '前のほうの列（視力配慮の対象になる列）が黄色になります。'+
+    '<b>どちらも子ども画面には出ません。</b></p>'+
     '<div class="hlp-note"><div class="h">💡 表示が小さいとき</div>'+
     '座席表は自動で画面に収まるよう縮みます。「＋」で拡大、「リセット」で自動調整に戻ります。</div>');
 
@@ -2450,7 +2454,8 @@ function renderKGrid(gridId,hidden){
       if(!x||!x.on){ h+='<div class="cellbox" style="visibility:hidden"></div>'; continue; }
       n++;
       var nm=current[sid(r,c)]||'';
-      var cls='cellbox seat'+(hidden?' veil':(nm?' has-name':''))+(isFrontRow(r)?' vrow':'');
+      // 子ども画面では前列の色分けをしない（どの席が特別かを見せないため）
+      var cls='cellbox seat'+(hidden?' veil':(nm?' has-name':''));
       h+='<div class="'+cls+'" data-f="'+x.facing+'" data-g="'+((S.kidGroups&&x.group)||0)+'" id="'+gridId+'-'+sid(r,c)+'">'+
          deskSvg(x.facing)+
          '<div class="dnum">'+n+'番</div>'+
