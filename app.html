@@ -306,6 +306,50 @@ table.heat thead th{top:0;z-index:2}
 }
 .hist-row .d{flex:1;color:var(--sub)}
 
+/* ===== 使い方タブ ===== */
+.hlp-lead{
+  background:var(--accent-l);border:1.5px solid var(--accent);border-radius:16px;
+  padding:14px 16px;margin-bottom:12px;
+}
+.hlp-lead h2{margin:0 0 6px;font-size:15px;color:var(--accent-d)}
+.hlp-lead p{margin:0;font-size:13px;line-height:1.9}
+details.hlp{
+  background:var(--card);border:1.5px solid var(--line);border-radius:16px;
+  margin-bottom:9px;overflow:hidden;
+}
+details.hlp>summary{
+  cursor:pointer;list-style:none;padding:12px 15px;font-size:14px;font-weight:700;
+  color:var(--accent-d);display:flex;align-items:center;gap:9px;
+}
+details.hlp>summary::-webkit-details-marker{display:none}
+details.hlp>summary::after{
+  content:'▾';margin-left:auto;color:var(--sub);font-size:12px;transition:transform .15s;
+}
+details.hlp[open]>summary::after{transform:rotate(180deg)}
+details.hlp>summary:hover{background:var(--accent-l)}
+.hlp-body{padding:0 15px 15px;font-size:13.5px;line-height:1.95}
+.hlp-body p{margin:0 0 10px}
+.hlp-body ol,.hlp-body ul{margin:0 0 10px;padding-left:1.4em}
+.hlp-body li{margin-bottom:5px}
+.hlp-body b{color:var(--text)}
+.hlp-tbl{width:100%;border-collapse:collapse;font-size:13px;margin:0 0 10px}
+.hlp-tbl th,.hlp-tbl td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.hlp-tbl th{font-size:11.5px;color:var(--sub);white-space:nowrap}
+.hlp-tbl td:first-child{white-space:nowrap;font-weight:700}
+.hlp-note{
+  border-left:3px solid var(--accent);background:var(--accent-l);
+  border-radius:0 10px 10px 0;padding:9px 13px;margin:0 0 10px;font-size:13px;
+}
+.hlp-note.warn{border-left-color:var(--warn);background:#fdeeea}
+.hlp-note .h{font-weight:700;margin-bottom:2px}
+.hlp-note.warn .h{color:var(--warn)}
+.hlp-step{counter-reset:hs;list-style:none;padding:0;margin:0 0 10px}
+.hlp-step li{counter-increment:hs;position-relative;position:relative;padding-left:31px;margin-bottom:9px}
+.hlp-step li::before{
+  content:counter(hs);position:absolute;left:0;top:2px;width:21px;height:21px;
+  border-radius:50%;background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
 /* ===== 子ども画面 ===== */
 #scr-k{background:var(--head);min-height:100vh;color:#fff;overflow-x:hidden}
 .k-head{display:flex;align-items:center;gap:10px;padding:8px 12px}
@@ -380,6 +424,7 @@ table.heat thead th{top:0;z-index:2}
     <button onclick="tab('stat',this)">📊 統計</button>
     <button onclick="tab('hist',this)">📅 履歴</button>
     <button onclick="tab('conf',this)">🎨 設定</button>
+    <button onclick="tab('help',this)">📖 使い方</button>
   </nav>
 
   <!-- ---------- 座席タブ ---------- -->
@@ -616,6 +661,9 @@ table.heat thead th{top:0;z-index:2}
     </div>
   </div>
 
+
+  <!-- ---------- 使い方タブ ---------- -->
+  <div class="pane" id="pane-help"></div>
   <button class="fab" onclick="toKid()">👦 子ども画面へ</button>
 </div>
 
@@ -881,7 +929,7 @@ function load(){
    画面・タブ切替
    ========================================================= */
 function tab(name,btn){
-  ['seat','roster','care','stat','hist','conf'].forEach(function(n){
+  ['seat','roster','care','stat','hist','conf','help'].forEach(function(n){
     id('pane-'+n).classList.toggle('on',n===name);
   });
   Array.prototype.forEach.call(id('tabs').children,function(b){b.classList.remove('on');});
@@ -889,6 +937,7 @@ function tab(name,btn){
   if(name==='seat')applyTZoom();      // 表示された直後に幅が確定するので合わせ直す
   if(name==='stat')renderStats();
   if(name==='hist')renderHistory();
+  if(name==='help')renderHelp();
   sndClick();
 }
 function toKid(){
@@ -2099,6 +2148,173 @@ function histDel(i){
 /* =========================================================
    設定（フォント・テーマ・BGM）
    ========================================================= */
+/* =========================================================
+   使い方（アプリ内マニュアル）
+   フラグ名・フォント名などは定義から組み立てるので、
+   設定を変えてもこのページが古くならない。
+   ========================================================= */
+var HELP_EFFECT={
+  leader:'同じ班に集まらないよう散らす',
+  high:  '同じ班に集まらないよう散らす',
+  low:   '同じ班に集まらないよう散らす',
+  care:  '同じ班に集まらないよう散らす',
+  vision:'<b>必ず前のほうの列にする</b>',
+  sn:    '<b>同じ班に2人以上入れない</b>'
+};
+function helpSection(title,body,open){
+  return '<details class="hlp"'+(open?' open':'')+'><summary>'+title+'</summary>'+
+         '<div class="hlp-body">'+body+'</div></details>';
+}
+function renderHelp(){
+  var flagRows=FLAGS.map(function(f){
+    return '<tr><td>'+f.icon+' '+esc(f.label)+'</td><td>'+
+           (HELP_EFFECT[f.key]||'同じ班に集まらないよう散らす')+'</td></tr>';
+  }).join('');
+  var h='';
+
+  h+='<div class="hlp-lead"><h2>📖 使い方</h2>'+
+     '<p>名簿と「配慮したいこと」を登録しておくと、それらを同時に満たす座席表を自動でつくります。'+
+     'まずは「はじめての3ステップ」だけで席替えができます。</p></div>';
+
+  h+=helpSection('🚀 はじめての3ステップ',
+    '<ol class="hlp-step">'+
+    '<li><b>📋 名簿タブ</b>に児童の名前を貼り付けます。1行に1人ずつ。上から順に出席番号1番、2番…になります。</li>'+
+    '<li><b>🪑 座席タブ</b>のプリセット（25〜35席）で、教室の机の数に合わせます。</li>'+
+    '<li><b>🪑 座席タブ</b>の「✨ スマート配置」を押します。これで座席表ができます。</li>'+
+    '</ol>'+
+    '<p>配慮の設定は、必要になってから足していけば大丈夫です。</p>'+
+    '<div class="hlp-note"><div class="h">💡 名簿の貼り付け</div>'+
+    'ロイロノートや名簿ファイルからコピーして貼り付けられます。手で打つ必要はありません。'+
+    '同じ名字の子がいる場合は自動で区別します。</div>', true);
+
+  h+=helpSection('📋 名簿タブ',
+    '<p>名前を入れると、下に一人ずつの設定欄が出ます。「男」「女」と絵文字をタップすると色がつき、'+
+    'もう一度タップで解除できます。</p>'+
+    '<table class="hlp-tbl"><tr><th>印</th><th>配置への効き方</th></tr>'+flagRows+'</table>'+
+    '<div class="hlp-note warn"><div class="h">⚠️ フラグは子どもに見せません</div>'+
+    '子ども画面にはフラグは一切出ません。先生画面の座席表でも初期状態では出ないので、'+
+    '確認したいときだけ座席タブの「💡 配慮フラグを座席表に出す」をオンにしてください。</div>'+
+    '<p>男女の設定は、座席タブで男子席・女子席を指定するときに使います。'+
+    '設定しなかった子は、どの席にも座れる扱いです。</p>');
+
+  h+=helpSection('🪑 座席タブ',
+    '<p>プリセットで机の数を決めたあと、空きマスの「＋」で席を増やせます。'+
+    'ふつうの状態で机をタップすると、その席に座る子を選べます。</p>'+
+    '<table class="hlp-tbl"><tr><th>モード</th><th>できること</th></tr>'+
+    '<tr><td>🗑 削除モード</td><td>机をタップして「席」と「空き」を切り替える</td></tr>'+
+    '<tr><td>🔄 向き変更</td><td>タップするたび 上→右→下→左 と回る。コの字型も作れる</td></tr>'+
+    '<tr><td>🎨 班分け</td><td>色を選んで机をなぞると班になる（8色）</td></tr>'+
+    '<tr><td>♂♀ 男女席</td><td>男子席・女子席を指定。市松などの一括設定つき</td></tr>'+
+    '</table>'+
+    '<p><b>机の色の意味</b>：黄色は視力配慮の前列、水色は名前が入っている席、木の色は空席です。'+
+    '班の色を塗ると、その色が優先されます。</p>'+
+    '<div class="hlp-note"><div class="h">💡 表示が小さいとき</div>'+
+    '座席表は自動で画面に収まるよう縮みます。「＋」で拡大、「リセット」で自動調整に戻ります。</div>');
+
+  h+=helpSection('💡 配慮タブ',
+    '<p><b>👓 視力配慮</b>の対象は名簿タブの👓で決めます。ここでは「前から何列目までを前の席とするか」'+
+    'を設定し、今の対象を確認します。</p>'+
+    '<p><b>↔️ 席の組み合わせ</b>は、児童を「＋ メンバー」で足していき、離すか近づけるかと距離を決めて'+
+    '登録します。3人以上のグループも作れます。</p>'+
+    '<div class="hlp-note"><div class="h">📏 マス数の数えかた</div>'+
+    'たて・よこに何マス動けば着くかで数えます。'+
+    '<b>前後左右のとなりが1マス、ななめは「たて1＋よこ1」で2マス</b>です。</div>'+
+    '<table class="hlp-tbl"><tr><th>したいこと</th><th>設定</th></tr>'+
+    '<tr><td>となり同士にしない</td><td>離す・2マス以上</td></tr>'+
+    '<tr><td>ななめも含めて離す</td><td>離す・3マス以上</td></tr>'+
+    '<tr><td>教室の端と端にする</td><td>離す・6マス以上</td></tr>'+
+    '<tr><td>となり合わせにする</td><td>近づける・となり合わせ（2人のみ）</td></tr>'+
+    '<tr><td>同じ班にまとめる</td><td>近づける・2マス以内（3〜4人）</td></tr>'+
+    '</table>'+
+    '<p><b>▲▼で並べかえると、全部は満たせないときに上にあるものから守られます。</b>'+
+    '大事な指定ほど上に置いてください。</p>'+
+    '<div class="hlp-note"><div class="h">💡 3人以上のとき</div>'+
+    'グループでは「全員がおたがいに」その距離になります。1つの席のとなりどうしは必ず2マス離れるため、'+
+    '3人以上を全員となり合わせにはできません。メンバーが3人になると選択肢から消えます。</div>');
+
+  h+=helpSection('✨ 席替えを実行する',
+    '<p><b>スマート配置</b>がふだんの席替えです。すべての条件を考えて席を決めます。'+
+    '<b>完全ランダム</b>は条件を考えずシャッフルするだけで、お楽しみ用です。</p>'+
+    '<p>チェックを外すと、その条件を無視します。ふだんは全部オンで構いません。</p>'+
+    '<div class="hlp-note warn"><div class="h">⚠️ 赤い警告が出たら</div>'+
+    '条件を全部は満たせなかったという意味です。たとえば'+
+    '「2番目「佐藤↔高橋」3マス以上にしたい／実際2マス」なら、'+
+    '2番目に登録した指定が1マス足りなかったということ。'+
+    '優先順位の低いものから犠牲になるので、困る場合は▲で上に動かすか条件をゆるめてください。</div>'+
+    '<p>配置のあとに机をタップして手で入れ替えることもできます。</p>');
+
+  h+=helpSection('👦 子ども画面（発表）',
+    '<table class="hlp-tbl"><tr><th>発表のしかた</th><th>流れ</th></tr>'+
+    '<tr><td>🎊 いっせいに発表</td><td>カウントダウン → ルーレット → 全員の席が1つずつめくれる</td></tr>'+
+    '<tr><td>👤 ひとりずつ発表</td><td>名前 → 席番号のルーレット → 先生が「ストップ！」を押す</td></tr>'+
+    '</table>'+
+    '<div class="hlp-note"><div class="h">💡 何度出しても記録は増えません</div>'+
+    '同じ座席表をもう一度発表しても統計は二重に増えません。増えるのは新しく配置し直したときだけです。</div>'+
+    '<div class="hlp-note warn"><div class="h">🔒 先生画面に戻るにはパスワード</div>'+
+    '4けたのパスワードを聞かれます。<b>初期値は 1234</b>。設定タブで変更できます。'+
+    '子ども画面のままリロードしても子ども画面で開くので、児童が触っても名簿は見られません。</div>');
+
+  h+=helpSection('📊 統計・📅 履歴',
+    '<table class="hlp-tbl"><tr><th>見かた</th><th>分かること</th></tr>'+
+    '<tr><td>🏆 隣になった回数</td><td>よく隣になっている組み合わせの多い順</td></tr>'+
+    '<tr><td>🔥 相性マップ</td><td>全員×全員の表。色が濃いほど多く隣になっている</td></tr>'+
+    '<tr><td>🌱 まだ隣でない子</td><td>一度も隣になっていない相手</td></tr>'+
+    '<tr><td>🪑 座席の使用回数</td><td>その子がどの席に何回座ったか</td></tr>'+
+    '</table>'+
+    '<p>履歴には過去100回分が残ります。「見る」で当時の座席表を確認でき、'+
+    '「もどす」でその配置に戻せます。</p>'+
+    '<div class="hlp-note"><div class="h">💡 学級経営に</div>'+
+    '「まだ隣でない子」を見ると、関わりの少ない組み合わせが分かります。'+
+    'アプリはこれを優先して隣にするので、続けるほど学級全体の関わりが広がります。</div>');
+
+  h+=helpSection('🎨 設定',
+    '<table class="hlp-tbl">'+
+    '<tr><td>🔤 フォント</td><td>'+FONTS.map(function(f){return esc(f.label);}).join('／')+'</td></tr>'+
+    '<tr><td>🎨 テーマ</td><td>'+THEMES.map(function(t){return esc(t.label);}).join('／')+'</td></tr>'+
+    '<tr><td>🔊 BGM</td><td>'+BGMS.map(function(b){return esc(b.label);}).join('／')+'</td></tr>'+
+    '<tr><td>🔒 パスワード</td><td>先生画面に戻るための4けたの数字</td></tr>'+
+    '</table>'+
+    '<p><b>パスワードの変え方</b>：今のパスワード（最初は 1234）、新しい4けた、確認用を入れて'+
+    '「変更する」を押します。</p>'+
+    '<div class="hlp-note warn"><div class="h">⚠️ 変えたら必ず控えてください</div>'+
+    '忘れた場合、パスワード入力画面の「パスワードが分からないとき」から復旧できますが、'+
+    '<b>名簿や統計もすべて消えます。</b>先にバックアップを取っておいてください。</div>');
+
+  h+=helpSection('💾 データを守る（重要）',
+    '<div class="hlp-note warn"><div class="h">🔑 データはこの端末のブラウザの中だけにあります</div>'+
+    '名簿も統計も履歴も、インターネット上には保存されません。そのため次のことが起こります。'+
+    '<ul style="margin:6px 0 0;padding-left:1.3em">'+
+    '<li>毎回<b>同じブラウザ</b>で開いてください（ChromeとEdgeでは別のデータになります）</li>'+
+    '<li><b>閲覧履歴やサイトデータを削除すると、名簿も統計も消えます</b></li>'+
+    '<li>別の端末で開くと、その端末には何も入っていません</li></ul></div>'+
+    '<p><b>バックアップの取りかた</b></p>'+
+    '<ol class="hlp-step">'+
+    '<li>設定タブの「💾 データの持ち出し」を開く</li>'+
+    '<li>「⬇ 書き出す」でファイルを1つ保存する</li>'+
+    '<li>そのファイルをなくならない場所に置く</li></ol>'+
+    '<p>戻すときや別の端末に移すときは「⬆ 読み込む」から選びます。</p>'+
+    '<div class="hlp-note"><div class="h">💡 おすすめのタイミング</div>'+
+    '名簿を入れ終えた直後と、学期の区切りごと。この2回だけでも、もしものときに戻せます。</div>');
+
+  h+=helpSection('🆘 困ったとき',
+    '<table class="hlp-tbl"><tr><th>症状</th><th>対処</th></tr>'+
+    '<tr><td>画面が古いまま</td><td>Ctrl＋Shift＋R で強制的に読み込み直す</td></tr>'+
+    '<tr><td>画面が真っ白</td><td>まず強制リロード。だめならURLの末尾に ?1 を付けて開く</td></tr>'+
+    '<tr><td>下に黄色い帯が出る</td><td>一部のデータが読めなかった印。「データを書き出す」で'+
+      'バックアップを取ってから知らせてください</td></tr>'+
+    '<tr><td>名簿が消えた</td><td>ブラウザのデータ削除が原因。書き出したファイルがあれば戻せます</td></tr>'+
+    '<tr><td>パスワードが分からない</td><td>入力画面の「パスワードが分からないとき」から。'+
+      'データは消えます</td></tr>'+
+    '<tr><td>席が足りないと出る</td><td>名簿の人数より座席が少ない状態です。'+
+      '座席タブで机を増やしてください</td></tr>'+
+    '</table>'+
+    '<div class="hlp-note"><div class="h">💡 学校のChromebookで使うとき</div>'+
+    'URLを開くだけで使えます。ただしデータはその端末にしか残らないので、'+
+    '先生のパソコンで作った名簿は自動では現れません。'+
+    '設定タブの書き出し／読み込みで移してください。</div>');
+
+  id('pane-help').innerHTML=h;
+}
 function renderConfBtns(){
   id('font-btns').innerHTML=FONTS.map(function(f){
     return '<button class="btn sm'+(S.font===f.key?' primary':'')+'" onclick="setFont(\''+f.key+'\')">'+f.label+'</button>';
