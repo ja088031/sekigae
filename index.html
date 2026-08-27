@@ -219,6 +219,16 @@ label.ck{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;cursor:
 .cellbox[data-f="down"]  .dsex{top:86px;left:5px}
 .cellbox[data-f="left"]  .dsex{top:5px;left:22px}
 .cellbox[data-f="right"] .dsex{top:5px;left:48px}
+/* 固定席のしるし（先生画面だけ。子ども画面には出さない） */
+.dpin{
+  position:absolute;z-index:4;font-size:14px;pointer-events:none;line-height:1;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));
+}
+.cellbox[data-f="up"]    .dpin{top:5px;right:6px}
+.cellbox[data-f="down"]  .dpin{top:86px;right:6px}
+.cellbox[data-f="left"]  .dpin{top:5px;right:48px}
+.cellbox[data-f="right"] .dpin{top:5px;right:22px}
+.cellbox.pinned .dtop{stroke:#e8722d;stroke-width:3.5}
 /* 名簿の男女ボタン */
 .sexbtn{
   cursor:pointer;border:1.5px solid var(--line);background:#fff;color:var(--sub);
@@ -270,6 +280,11 @@ label.ck{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;cursor:
   border-radius:12px;padding:6px 12px;cursor:pointer;color:var(--text);
 }
 .pick-list button:hover{border-color:var(--accent);background:var(--accent-l)}
+.pick-fix{
+  margin-top:12px;padding:9px 11px;border-radius:12px;font-size:12.5px;line-height:1.7;
+  background:#fff3e8;border:1.5px solid #ffcda3;color:#8a4a10;
+  display:flex;flex-direction:column;align-items:flex-start;gap:7px;
+}
 /* パスワード入力 */
 .pin-dots{display:flex;gap:12px;justify-content:center;margin:14px 0 8px}
 .pin-dot{
@@ -548,6 +563,23 @@ details.hlp>summary:hover{background:var(--accent-l)}
       <div id="vision-list"></div>
     </div>
     <div class="card">
+      <h2>📌 座席の固定（この子は毎回この席）</h2>
+      <div class="hint">
+        えらんだ児童を、決まった席に<b>毎回かならず</b>すわらせます。席替えをしても動きません。<br>
+        <b>ほかのどの条件よりも優先されます。</b>👓 視力配慮や男女席の指定と食いちがう場合も、固定した席が勝ちます
+        （登録するときにお知らせします）。<br>
+        座席タブで机をタップして出るまどからも設定できます。<b>📌 は先生画面だけに出ます。</b>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <select id="fix-name"></select>
+        <span>を</span>
+        <select id="fix-seat"></select>
+        <button class="btn sm primary" onclick="addFixed()">📌 この席に固定する</button>
+        <button class="btn sm danger" onclick="clearAllFixed()">すべて解除</button>
+      </div>
+      <div id="fix-list"></div>
+    </div>
+    <div class="card">
       <h2>↔️ 席の組み合わせ（離す・近づける）</h2>
       <div class="hint">
         えらんだ児童どうしを、はなして置くか、近づけて置くかを指定できます。<b>3人以上のグループも作れます。</b><br>
@@ -781,6 +813,7 @@ var S={
   vision:[],           // 名前の配列
   visionRows:2,
   seps:[],             // [[a,b,マス数],...] 2人を何マス以上はなすか（となり1・ななめ2）
+  fixed:{},            // 名前 -> 席ID("r_c")　毎回かならずこの席にする「固定席」
   adj:{},              // "a|b"(ソート済) -> 回数
   seatHist:{},         // name -> {"r_c":回数}
   rounds:0,
@@ -839,6 +872,43 @@ function seatDist(a,b){
 function isAdjSeat(a,b){
   var p=rc(a),q=rc(b);
   return (p.r===q.r&&Math.abs(p.c-q.c)===1)||(p.c===q.c&&Math.abs(p.r-q.r)===1);
+}
+
+/* --- 固定席（この子は毎回この席） ---------------------------------------
+   S.fixed に 名前→席ID で持つ。1人につき1席、1つの席に1人。
+   配置のときは探索の対象から外すので、かならず守られる。 */
+function normalizeFixed(){
+  if(!Array.isArray(S.students)) S.students=[];
+  if(!S.fixed||typeof S.fixed!=='object'||Array.isArray(S.fixed)) S.fixed={};
+  var seen={};
+  Object.keys(S.fixed).forEach(function(n){
+    var s=S.fixed[n];
+    // 名簿から消えた子、席IDの形になっていないもの、同じ席の重複は捨てる
+    if(S.students.indexOf(n)<0 || !/^\d+_\d+$/.test(String(s)) || seen[s]) delete S.fixed[n];
+    else seen[s]=1;
+  });
+}
+function fixedSeatOf(name){ return (name&&S.fixed&&S.fixed[name])||''; }
+/* 席ID → 名前 の逆引き表 */
+function fixedBySeat(){
+  var o={}, f=S.fixed||{};
+  Object.keys(f).forEach(function(n){ if(f[n]) o[f[n]]=n; });
+  return o;
+}
+function fixedNameAt(seatId){ return fixedBySeat()[seatId]||''; }
+/* 今の座席表で本当に使える固定席だけ返す（消した席の分は除く） */
+function liveFixed(){
+  var out={}, act={};
+  activeSeats().forEach(function(s){ act[s]=1; });
+  Object.keys(S.fixed||{}).forEach(function(n){
+    if(S.students.indexOf(n)>=0 && act[S.fixed[n]]) out[n]=S.fixed[n];
+  });
+  return out;
+}
+/* 「12番（前から2列目・左から3番目）」のような席の呼び名 */
+function seatLabel(seatId){
+  var p=rc(seatId);
+  return seatNo(seatId)+'番（前から'+(p.r+1)+'列目・左から'+(p.c+1)+'番目）';
 }
 
 /* =========================================================
@@ -1068,11 +1138,15 @@ function setSize(){
   S.rows=Math.max(1,Math.min(12,parseInt(id('in-rows').value)||5));
   S.cols=Math.max(1,Math.min(12,parseInt(id('in-cols').value)||6));
   id('in-rows').value=S.rows; id('in-cols').value=S.cols;
-  ensureCells(); renderSeats(); save();
+  ensureCells(); renderSeats(); renderFixed(); save();
 }
 function applyPreset(n){
   var placed=activeSeats().filter(function(s){return S.cells[s].name;}).length;
-  if(placed && !confirm('座席を作り直すと、今入っている名前('+placed+'人分)は消えます。よろしいですか？')) return;
+  var nfix=Object.keys(S.fixed||{}).length;
+  if((placed||nfix) && !confirm('座席を作り直すと、今入っている名前('+placed+'人分)は消えます。'+
+     (nfix?'\n📌 座席の固定（'+nfix+'人分）も、席の位置が変わるため解除されます。':'')+
+     '\n\nよろしいですか？')) return;
+  if(nfix) S.fixed={};
   var cols = n<=25?5:(n<=30?6:(n<=32?6:7));
   var rows = Math.ceil(n/cols);
   S.rows=rows; S.cols=cols; S.cells={};
@@ -1082,7 +1156,7 @@ function applyPreset(n){
     if(k<n){ S.cells[sid(r,c)]={on:true,name:'',facing:'up',group:0,sex:''}; k++; }
   }
   id('in-rows').value=rows; id('in-cols').value=cols;
-  sndSelect(); renderSeats(); save();
+  sndSelect(); renderSeats(); renderFixed(); save();
 }
 function clearNames(){
   if(!confirm('全部の席から名前を消しますか？'))return;
@@ -1186,9 +1260,15 @@ function cycleFacing(r,c){
 }
 function toggleSeat(r,c){
   var x=cell(r,c); if(!x)return;
+  // 固定席をなくすときは、指定も一緒に消してよいか確かめる
+  if(x.on){
+    var pn=fixedNameAt(sid(r,c));
+    if(pn && !confirm('この席は 📌 '+pn+' さんの固定席です。\n席をなくすと固定の指定も解除されます。よろしいですか？')) return;
+    if(pn) delete S.fixed[pn];
+  }
   x.on=!x.on; if(!x.on){x.name='';x.group=0;}
   x.on?sndSelect():sndDelete();
-  renderSeats(); save();
+  renderSeats(); renderFixed(); save();
 }
 /* 班分けモード／男女席モードで、机をなぞって塗る */
 function paintCell(r,c){
@@ -1248,6 +1328,7 @@ function sexMark(v){
 function renderSeats(){
   ensureCells();
   var h=blackboardSvg(S.cols), n=0;
+  var pin=fixedBySeat();     // 固定席の 📌 は先生画面だけに出す
   for(var r=0;r<S.rows;r++){
     h+='<div class="seat-row">';
     for(var c=0;c<S.cols;c++){
@@ -1257,10 +1338,11 @@ function renderSeats(){
         continue;
       }
       n++;
-      var nm=x.name||'';
+      var nm=x.name||'', pn=pin[sid(r,c)]||'';
       var cls='cellbox seat';
       if(nm) cls+=' has-name';
       if(S.showFlags && isFrontRow(r)) cls+=' vrow';   // 配慮の情報を出すときだけ前列を色分け
+      if(pn) cls+=' pinned';
       if(mode==='del') cls+=' delmode';
       if(mode==='sex') cls+=' sexmode';
       h+='<div class="'+cls+'" data-f="'+x.facing+'" data-g="'+(x.group||0)+'" data-s="'+(x.sex||'')+'"'+
@@ -1268,6 +1350,7 @@ function renderSeats(){
          ' onmousedown="grpDown('+r+','+c+')" onmouseenter="grpMove('+r+','+c+')">'+
          deskSvg(x.facing)+
          sexMark(x.sex)+
+         (pn?'<div class="dpin" title="📌 '+esc(pn)+' の固定席">📌</div>':'')+
          '<div class="dnum">'+n+'番</div>'+
          (S.showFlags?'<div class="dflags">'+flagIcons(nm)+'</div>':'')+
          '<div class="dname'+(nm?'':' blank')+'" style="font-size:'+(nm?nameFont(nm):15)+'px">'+
@@ -1335,11 +1418,37 @@ function openPicker(r,c){
   });
   h+='</div>';
   if(!avail.length) h+='<div class="empty-state">名簿の全員が席についています</div>';
+  // 📌 この席を「毎回この子」にするかどうか
+  var pn=fixedNameAt(sid(r,c)), nm=x.name||'';
+  h+='<div class="pick-fix">';
+  if(pn){
+    h+='<div>📌 <b>'+esc(pn)+'</b> さんの固定席です。席替えをしても毎回この席になります。</div>'+
+       '<button class="btn sm" onclick="unpinSeat()">📌 固定をやめる</button>';
+  }else if(nm){
+    h+='<div>この席を、毎回だれかがすわる<b>固定席</b>にできます。</div>'+
+       '<button class="btn sm" onclick="pinSeat(\''+esc(nm)+'\')">📌 '+esc(nm)+' さんをこの席に固定する</button>';
+  }else{
+    h+='<div style="color:var(--sub)">上から子をえらぶと、この席に固定できるようになります。</div>';
+  }
+  h+='</div>';
   h+='<div class="row" style="margin-top:12px">'+
      '<button class="btn sm danger" onclick="pick(\'\')">空席にする</button>'+
      '<button class="btn sm" onclick="closeModal()">とじる</button></div>';
   id('modal').innerHTML=h;
   id('overlay').classList.add('on');
+}
+/* ポップアップから固定する／やめる */
+function pinSeat(name){
+  if(!pickTarget)return;
+  if(!setFixed(name,sid(pickTarget.r,pickTarget.c)))return;
+  closeModal(); renderSeats(); renderFixed();
+}
+function unpinSeat(){
+  if(!pickTarget)return;
+  var n=fixedNameAt(sid(pickTarget.r,pickTarget.c));
+  if(!n)return;
+  delete S.fixed[n]; sndDelete(); save();
+  closeModal(); renderSeats(); renderFixed();
 }
 function pick(name){
   if(!pickTarget)return;
@@ -1368,15 +1477,18 @@ function onRoster(){
     else { seen[n]=1; out.push(n); }
   });
   S.students=out;
+  normalizeFixed();                     // 名簿から消えた子の固定席は捨てる
   id('roster-stat').textContent=out.length?out.length+'人':'';
   id('num-card').style.display=out.length?'block':'none';
-  renderNumList(); updateSelects(); save();
+  renderNumList(); updateSelects(); renderFixed(); renderSeats(); save();
 }
 function clearRoster(){
   if(!confirm('名簿をすべて消しますか？'))return;
   id('roster-ta').value=''; S.students=[]; S.flags={}; S.sex={}; S.vision=[]; S.seps=[]; sepDraft=[];
+  S.fixed={};
   id('roster-stat').textContent=''; id('num-card').style.display='none';
-  renderNumList(); renderVision(); renderSeps(); updateSelects(); sndDelete(); save();
+  renderNumList(); renderVision(); renderSeps(); renderFixed(); renderSeats();
+  updateSelects(); sndDelete(); save();
 }
 function loadSample(){
   var names=['田中','鈴木','佐藤','高橋','伊藤','渡辺','山本','中村','小林','加藤',
@@ -1451,6 +1563,108 @@ function renderVision(){
     ? eye.map(function(n){ return '<span class="tag tag-o">👓 '+esc(n)+'</span>'; }).join('')
     : '<span style="font-size:12px;color:var(--sub)">まだ対象がいません。名簿タブで 👓 を付けてください。</span>';
 }
+/* --- 📌 座席の固定 ---
+   ほかのどの条件よりも優先する。食いちがう指定があるときは登録前に知らせる。 */
+function setFixed(name,seatId,quiet){
+  if(!name||!seatId) return false;
+  if(S.students.indexOf(name)<0) return false;
+  var x=S.cells[seatId];
+  if(!x||!x.on){ alert('その席は今ありません。座席タブで席を作ってから指定してください。'); return false; }
+  var warn=[], other=fixedNameAt(seatId);
+  if(S.flags[name]&&S.flags[name].vision&&!isFrontRow(rc(seatId).r))
+    warn.push('・'+name+'さんには 👓 視力配慮が付いていますが、この席は前の列ではありません。');
+  var ss=x.sex, ps=S.sex[name];
+  if(ss&&ps&&ss!==ps)
+    warn.push('・この席は'+(ss==='m'?'男子':'女子')+'席の指定ですが、'+name+'さんは'+(ps==='m'?'男子':'女子')+'です。');
+  if(other&&other!==name)
+    warn.push('・この席は今 '+other+' さんの固定席です。'+name+'さんにつけかえます。');
+  if(warn.length&&!quiet){
+    if(!confirm('📌 '+name+' さんを '+seatLabel(seatId)+' に固定します。\n\n'+
+                warn.join('\n')+'\n\n固定席はこれらより優先されます。よろしいですか？')) return false;
+  }
+  if(other&&other!==name) delete S.fixed[other];
+  S.fixed[name]=seatId;
+  // 今すでに配置があるなら、その場でこの席に移す（相手とは入れかえ）
+  if(activeSeats().some(function(s){ return S.cells[s].name; })) moveToFixedSeat(name,seatId);
+  sndSelect(); save();
+  return true;
+}
+/* 今の座席表のうえで、その子を固定席へ移す */
+function moveToFixedSeat(name,seatId){
+  var x=S.cells[seatId];
+  if(!x||!x.on||x.name===name) return;
+  var from='';
+  activeSeats().forEach(function(s){ if(S.cells[s].name===name) from=s; });
+  var was=x.name||'';
+  x.name=name;
+  if(from&&from!==seatId) S.cells[from].name=was;          // おたがいを入れかえ
+  else if(was){                                            // 押し出された子は空席へ
+    var free=activeSeats().filter(function(s){ return !S.cells[s].name; })[0];
+    if(free) S.cells[free].name=was;
+  }
+  current={}; activeSeats().forEach(function(s){ current[s]=S.cells[s].name||''; });
+  uncommitted=true;
+}
+function addFixed(){
+  var n=id('fix-name').value, s=id('fix-seat').value;
+  if(!n||!s) return;
+  if(!setFixed(n,s)) return;
+  renderSeats(); renderFixed();
+}
+function removeFixed(name){
+  if(!S.fixed||!S.fixed[name]) return;
+  delete S.fixed[name];
+  sndDelete(); renderSeats(); renderFixed(); save();
+}
+function clearAllFixed(){
+  if(!Object.keys(S.fixed||{}).length) return;
+  if(!confirm('📌 座席の固定をすべて解除しますか？')) return;
+  S.fixed={}; sndDelete(); renderSeats(); renderFixed(); save();
+}
+function updateFixedSelects(){
+  var ns=id('fix-name'), ss=id('fix-seat'); if(!ns||!ss) return;
+  var cn=ns.value, cs=ss.value, pin=fixedBySeat();
+  ns.innerHTML=S.students.map(function(n){
+    return '<option value="'+esc(n)+'">'+esc(n)+(fixedSeatOf(n)?'（📌設定ずみ）':'')+'</option>';
+  }).join('');
+  if(S.students.indexOf(cn)>=0) ns.value=cn;
+  var act=activeSeats();
+  ss.innerHTML=act.map(function(s){
+    return '<option value="'+s+'">'+esc(seatLabel(s))+(pin[s]?'（📌'+esc(pin[s])+'）':'')+'</option>';
+  }).join('');
+  if(act.indexOf(cs)>=0) ss.value=cs;
+}
+function renderFixed(){
+  var el=id('fix-list'); if(!el) return;
+  updateFixedSelects();
+  var ks=Object.keys(S.fixed||{}).filter(function(n){ return S.students.indexOf(n)>=0; });
+  if(!ks.length){
+    el.innerHTML='<span style="font-size:12px;color:var(--sub)">まだ固定した子はいません</span>';
+    return;
+  }
+  var ord={};
+  activeSeats().forEach(function(s,i){ ord[s]=i; });
+  ks.sort(function(a,b){
+    var x=ord[S.fixed[a]], y=ord[S.fixed[b]];
+    return (x===undefined?99999:x)-(y===undefined?99999:y);
+  });
+  var h='', lost=0;
+  ks.forEach(function(n){
+    var s=S.fixed[n], ok=(ord[s]!==undefined);
+    if(!ok) lost++;
+    h+='<div class="sep-row">'+
+       '<span class="sep-no">📌</span>'+
+       '<span class="nm">'+esc(n)+'</span>'+
+       '<span class="dist'+(ok?' near':'')+'">'+(ok?esc(seatLabel(s)):'⚠️ この席は今ありません')+'</span>'+
+       '<button class="del" onclick="removeFixed(\''+esc(n)+'\')" title="固定を解除">×</button>'+
+       '</div>';
+  });
+  if(lost) h+='<div style="font-size:11.5px;color:var(--warn);margin-top:6px">'+
+              '⚠️ 座席のかたちを変えたため、なくなった席への指定があります。'+
+              '席を作り直すか、×で解除してください。配置のときは無視されます。</div>';
+  el.innerHTML=h;
+}
+
 /* 保存データの形をそろえる。
    きまりは {m:[名前…], d:マス数, k:'far'|'near'} で持つ。
    古い [a,b] や [a,b,d] や [a,b,d,kind] の形はここで変換する。 */
@@ -1643,6 +1857,20 @@ function buildCtx(){
   });
   var i,j,n,s;
 
+  // 📌 固定席。この席とこの子は探索の対象から外すので、かならずこのとおりになる。
+  // 席がなくなっている指定と、1つの席にふたり分ある指定は無視する。
+  var seatIdx={}; seats.forEach(function(sv,k){ seatIdx[sv]=k; });
+  var lockAt=new Int32Array(L), lockOf=new Int32Array(M);
+  for(s=0;s<L;s++) lockAt[s]=-1;
+  for(n=0;n<M;n++) lockOf[n]=-1;
+  var fixMap=liveFixed();
+  Object.keys(fixMap).forEach(function(nm2){
+    var ni=nameIdx[nm2], si=seatIdx[fixMap[nm2]];
+    if(ni===undefined||si===undefined) return;
+    if(lockAt[si]>=0||lockOf[ni]>=0) return;
+    lockAt[si]=ni; lockOf[ni]=si;
+  });
+
   // 男女：0=指定なし 1=男子 2=女子
   var code={m:1,f:2};
   var seatSex=new Int32Array(L);
@@ -1656,6 +1884,9 @@ function buildCtx(){
     var isBack=!isFrontRow(rc(seats[s]).r);
     for(n=0;n<N;n++){
       var v=0, nm=names[n];
+      // 固定席の子は席が動かない。点をつけても選び直しようがないので0にしておく
+      // （毎回の同じ点で「もう完璧」の打ち切り判定が働かなくなるのを防ぐ）
+      if(lockOf[n]>=0){ seatCost[s*M+n]=0; continue; }
       if(keepV&&vs[nm]&&isBack) v+=1000;
       // 男女の指定がある席に、ちがう性別の子が来たら実質の禁止
       if(keepX&&seatSex[s]&&stuSex[n]&&seatSex[s]!==stuSex[n]) v+=1000;
@@ -1737,12 +1968,21 @@ function buildCtx(){
   // 「散らす」を有効にしたフラグだけをビットで持つ
   var spreadBits=0;
   for(i=0;i<FLAGS.length;i++) if(spreadOn(FLAGS[i].key)) spreadBits|=(1<<i);
-  var frontSeats=[], backSeats=[];
-  for(s=0;s<L;s++) (isFrontRow(rc(seats[s]).r)?frontSeats:backSeats).push(s);
+  // 固定席とその子は、はじめから外して考える（自由に動かせる席・子だけを並べる）
+  var frontSeats=[], backSeats=[], freeSeats=[];
+  for(s=0;s<L;s++){
+    if(lockAt[s]>=0) continue;
+    freeSeats.push(s);
+    (isFrontRow(rc(seats[s]).r)?frontSeats:backSeats).push(s);
+  }
   var visionNames=[], otherNames=[];
-  for(n=0;n<N;n++) (vs[names[n]]?visionNames:otherNames).push(n);
+  for(n=0;n<N;n++){
+    if(lockOf[n]>=0) continue;
+    (vs[names[n]]?visionNames:otherNames).push(n);
+  }
 
   return {
+    lockAt:lockAt, lockOf:lockOf, freeSeats:new Int32Array(freeSeats), fixMap:fixMap,
     seats:seats, L:L, names:names, N:N, M:M, EMPTY:EMPTY,
     seatCost:seatCost, pairCost:pairCost, fbits:fbits,
     ruleStart:ruleStart, rulePartner:rulePartner, ruleReq:ruleReq,
@@ -1765,6 +2005,7 @@ function searchAssign(ctx,restarts,iters){
   var ruleStart=ctx.ruleStart, rulePartner=ctx.rulePartner, ruleReq=ctx.ruleReq;
   var ruleNear=ctx.ruleNear, ruleW=ctx.ruleW, anyRule=ctx.anyRule, distTab=ctx.distTab;
   var snBit=ctx.snBit, keepSN=ctx.keepSN, spreadBits=ctx.spreadBits;
+  var lockAt=ctx.lockAt, lockOf=ctx.lockOf, free=ctx.freeSeats, FL=free.length;
   var arr=new Int32Array(L), best=new Int32Array(L), bestSc=Infinity;
   var pos=new Int32Array(M);            // 児童 → 座っている席番号
   var i,j,k,t;
@@ -1855,14 +2096,16 @@ function searchAssign(ctx,restarts,iters){
   function fillRandom(){
     var x,p;
     for(x=0;x<L;x++){ arr[x]=EMPTY; used[x]=0; }
+    // 📌 固定席を先に埋めておく。ここから先この席は動かさない
+    for(x=0;x<L;x++) if(lockAt[x]>=0){ arr[x]=lockAt[x]; used[x]=1; }
     var order, pool;
     if(ctx.keepV){
       // 視力配慮の子を先に、前のほうの席から埋める
       order=shuffle(ctx.frontSeats.slice()).concat(shuffle(ctx.backSeats.slice()));
       pool=shuffle(ctx.visionNames.slice()).concat(shuffle(ctx.otherNames.slice()));
     }else{
-      order=[]; for(x=0;x<L;x++) order.push(x); shuffle(order);
-      pool=[];  for(x=0;x<N;x++) pool.push(x);  shuffle(pool);
+      order=[]; for(x=0;x<FL;x++) order.push(free[x]); shuffle(order);
+      pool=[];  for(x=0;x<N;x++) if(lockOf[x]<0) pool.push(x);  shuffle(pool);
     }
     // 男女の指定に合う席を優先して入れる（合う席がなければ空いている席へ）
     for(p=0;p<pool.length;p++){
@@ -1881,10 +2124,12 @@ function searchAssign(ctx,restarts,iters){
     rebuildPos();
   }
 
+  // 入れ替えの候補は固定席をのぞいた席だけ。固定が多いほど探索も軽くなる
+  var IT=(FL>=2)?iters:0;
   for(t=0;t<restarts;t++){
     fillRandom();
-    for(k=0;k<iters;k++){
-      var a=0|Math.random()*L, b=0|Math.random()*L;
+    for(k=0;k<IT;k++){
+      var a=free[0|Math.random()*FL], b=free[0|Math.random()*FL];
       if(a===b)continue;
       // a-b の組は partial(a) と partial(b) の両方に入るので、その分を1回引く
       var qa=quadOf[a], qb=quadOf[b], diffQ=(qa!==qb), adj=isNb[a*L+b];
@@ -1952,7 +2197,13 @@ function doAssign(smart){
 }
 function checkViolations(m){
   var out=[], vs=visionSet(), seats=Object.keys(m);
-  var bad=seats.filter(function(s){return m[s]&&vs[m[s]]&&!isFrontRow(rc(s).r);});
+  // 📌 固定した子は、先生がその席と決めたのだから警告しない
+  var fx=liveFixed();
+  var lostFix=Object.keys(S.fixed||{}).filter(function(n){
+    return S.students.indexOf(n)>=0 && !fx[n];
+  });
+  if(lostFix.length) out.push('📌 固定した席が今はないので使えず：'+lostFix.join('、'));
+  var bad=seats.filter(function(s){return m[s]&&vs[m[s]]&&!fx[m[s]]&&!isFrontRow(rc(s).r);});
   if(bad.length) out.push('視力配慮が後ろの席：'+bad.map(function(s){return m[s];}).join('、'));
   if(id('ck-keep-sep').checked){
     var sepBad=[];
@@ -1986,7 +2237,7 @@ function checkViolations(m){
   if(id('ck-keep-sex').checked){
     var sexBad=seats.filter(function(s){
       var n=m[s], ss=S.cells[s]&&S.cells[s].sex, ps=S.sex[n];
-      return n&&ss&&ps&&ss!==ps;
+      return n&&!fx[n]&&ss&&ps&&ss!==ps;
     });
     if(sexBad.length) out.push('男女席が合わず：'+sexBad.map(function(s){return m[s];}).join('、'));
   }
@@ -2243,6 +2494,12 @@ function renderHelp(){
     '</table>'+
     '<p><b>机の色の意味</b>：水色は名前が入っている席、木の色は空席です。'+
     '班の色を塗ると、その色が優先されます。</p>'+
+    '<div class="hlp-note"><div class="h">📌 その場で固定席にする</div>'+
+    '机をタップして出るまどの下に、<b>「📌 ○○さんをこの席に固定する」</b>があります。'+
+    'ここを押すと、席替えをしても毎回その席になります。'+
+    'まどをもう一度開けば「固定をやめる」で解除できます。'+
+    '固定した席には机の右上に 📌 が付き、机のふちがオレンジ色になります。'+
+    '<b>この印は先生画面だけで、子ども画面には出ません。</b></div>'+
     '<p>「💡 配慮の情報を座席表に出す」をオンにすると、フラグの絵文字が出て、'+
     '前のほうの列（視力配慮の対象になる列）が黄色になります。'+
     '<b>どちらも子ども画面には出ません。</b></p>'+
@@ -2252,6 +2509,20 @@ function renderHelp(){
   h+=helpSection('💡 配慮タブ',
     '<p><b>👓 視力配慮</b>の対象は名簿タブの👓で決めます。ここでは「前から何列目までを前の席とするか」'+
     'を設定し、今の対象を確認します。</p>'+
+    '<p><b>📌 座席の固定</b>は、決まった席から動かしたくない子に使います。'+
+    '児童と席をえらんで「📌 この席に固定する」を押すと、席替えをしても毎回その席になります。'+
+    '支援員がつく席、車いすや出入り口の近く、聞こえやすい位置など、'+
+    '毎回おなじにしたい席に向いています。</p>'+
+    '<div class="hlp-note"><div class="h">📌 固定席はいちばん強いきまり</div>'+
+    '固定した席は<b>ほかのどの条件よりも優先されます</b>。'+
+    '👓 視力配慮や男女席の指定と食いちがっていても、固定した席が勝ちます。'+
+    '食いちがう指定を登録しようとしたときは、その場でお知らせします。'+
+    '固定した子については、配置のあとに出る警告からも外れます'+
+    '（先生が決めた席なので、守れなかったことにはなりません）。</div>'+
+    '<div class="hlp-note warn"><div class="h">⚠️ 席のかたちを変えたとき</div>'+
+    'プリセットで座席を作り直すと、席の位置が変わってしまうため<b>固定はすべて解除されます</b>'+
+    '（作り直す前に確認が出ます）。削除モードで固定席をなくすときも確認が出ます。'+
+    'なくなった席への指定が残っている場合は、一覧に「⚠️ この席は今ありません」と出て、配置では無視されます。</div>'+
     '<p><b>↔️ 席の組み合わせ</b>は、児童を「＋ メンバー」で足していき、離すか近づけるかと距離を決めて'+
     '登録します。3人以上のグループも作れます。</p>'+
     '<div class="hlp-note"><div class="h">📏 マス数の数えかた</div>'+
@@ -2279,7 +2550,13 @@ function renderHelp(){
     '「2番目「佐藤↔高橋」3マス以上にしたい／実際2マス」なら、'+
     '2番目に登録した指定が1マス足りなかったということ。'+
     '優先順位の低いものから犠牲になるので、困る場合は▲で上に動かすか条件をゆるめてください。</div>'+
-    '<p>配置のあとに机をタップして手で入れ替えることもできます。</p>');
+    '<div class="hlp-note"><div class="h">📌 固定席だけは必ず守られます</div>'+
+    '配慮タブで固定した子は、そもそも席をさがす対象から外して計算します。'+
+    'だから警告が出るような混んだ条件でも、固定席がずれることはありません。'+
+    'ほかの子が、固定した子のまわりに合わせて配置されます。</div>'+
+    '<p>配置のあとに机をタップして手で入れ替えることもできます。'+
+    '<b>この入れ替えはその回かぎり</b>で、次の席替えには残りません。'+
+    '毎回おなじ席にしたいときは 📌 で固定してください。</p>');
 
   h+=helpSection('👦 子ども画面（発表）',
     '<table class="hlp-tbl"><tr><th>発表のしかた</th><th>流れ</th></tr>'+
@@ -2640,7 +2917,7 @@ function safeStep(label,fn){
   try{ fn(); }catch(e){ bootWarnings.push(label+' … '+((e&&e.message)||e)); }
 }
 function applyAllFromState(){
-  safeStep('データの形式そろえ',function(){ normalizeSeps(); migrateVision(); });
+  safeStep('データの形式そろえ',function(){ normalizeSeps(); migrateVision(); normalizeFixed(); });
   safeStep('見た目の設定',function(){
     document.body.dataset.theme=S.theme||'default';
     document.body.dataset.font=S.font||'maru';
@@ -2663,6 +2940,7 @@ function applyAllFromState(){
   safeStep('出席番号一覧',renderNumList);
   safeStep('視力配慮',renderVision);
   safeStep('組み合わせ',renderSeps);
+  safeStep('座席の固定',renderFixed);
   safeStep('男女の集計',renderSexStat);
   safeStep('班の散らし方',function(){ if(!S.spread)S.spread={}; renderSpread(); });
   safeStep('選択肢',function(){ updateSelects(); renderSepDraft(); renderSepDistOptions(); });
