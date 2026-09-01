@@ -2558,6 +2558,12 @@ function renderHelp(){
     '<tr><td>🎊 いっせいに発表</td><td>カウントダウン → ルーレット → 全員の席が1つずつめくれる</td></tr>'+
     '<tr><td>👤 ひとりずつ発表</td><td>名前 → 席がつぎつぎに光る → 先生が「ストップ！」を押す</td></tr>'+
     '</table>'+
+    '<div class="hlp-note warn"><div class="h">🔎 ルーレットでは毎回すべての机が光ります</div>'+
+    'ひとりずつ発表では、発表ずみの席も空席も含めて<b>教室のすべての机</b>が光ります。'+
+    '発表ずみの席を外すと、進むほど当たりの候補がせまくなり、'+
+    '最後の子は1つしか光らなくなってしまいます。'+
+    'それでは<b>先生が席を決めていることが児童に伝わってしまう</b>ので、'+
+    'どの子のときも全部の机を回しています。光る順番も毎回変えています。</div>'+
     '<div class="hlp-note"><div class="h">💡 何度出しても記録は増えません</div>'+
     '同じ座席表をもう一度発表しても統計は二重に増えません。増えるのは新しく配置し直したときだけです。</div>'+
     '<div class="hlp-note warn"><div class="h">🔒 先生画面に戻るにはパスワード</div>'+
@@ -2833,8 +2839,12 @@ function oboShow(){
   id('obo-stop').style.display='inline-block';
   id('obo-next').style.display='none';
   renderOboDots();
-  // 未発表の席をぐるぐる
-  var remain=oboQueue.slice(oboIdx).map(function(x){return x.seat;});
+  // どの子のときも「すべての机」をぐるぐる回す。
+  // 発表ずみの席や空席を外すと、残った席から当たりが絞れてしまい、
+  // 先生が席を決めていることも児童に伝わってしまうため。
+  // 毎回ならべ直して、光る順番からも読み取れないようにする。
+  oboSeats=shuffle(activeSeats());
+  var remain=oboSeats;
   oboSpinning=true;
   clearInterval(oboIv);
   var k=0;
@@ -2852,8 +2862,10 @@ function oboStop(){
   clearInterval(oboIv);
   id('obo-stop').style.display='none';
   var it=oboQueue[oboIdx], token=++oboToken;
-  // いきなり当たりの席へ飛ぶと不自然なので、だんだん遅くしながら止める
-  var remain=oboQueue.slice(oboIdx).map(function(x){return x.seat;});
+  // いきなり当たりの席へ飛ぶと不自然なので、だんだん遅くしながら止める。
+  // 回していたのと同じ「すべての机」の並びをたどるので、
+  // 減速の途中で光る席からも当たりは読み取れない。
+  var remain=oboSeats;
   var pos=remain.indexOf(it.seat), steps=Math.min(7,remain.length);
   var seq=[];
   for(var i=steps;i>0;i--) seq.push(remain[((pos-i)%remain.length+remain.length)%remain.length]);
