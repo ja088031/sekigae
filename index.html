@@ -183,29 +183,30 @@ label.ck{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;cursor:
 .cellbox.sexmode[data-s="m"] .dtop{fill:#bfe0ff}
 .cellbox.sexmode[data-s="f"] .dtop{fill:#ffd2e4}
 .cellbox.blank   .dtop{fill:#f5d98a}
-.cellbox.hi      .dtop{fill:#fff5c2}
-.cellbox.hi{filter:drop-shadow(0 0 7px #ffd93d)}
+/* ひとりずつ発表で「今ここ」を示す光り。席番号を出さなくなったので、
+   これが唯一の手がかりになる。教室のプロジェクタでも分かるよう強くする。 */
+.cellbox.hi .dtop{fill:#ffffff;stroke:#ff8c00;stroke-width:5}
+.cellbox.hi{
+  filter:drop-shadow(0 0 10px #ffb020) drop-shadow(0 0 24px #ffd93d);
+  transform:scale(1.12); z-index:6;
+}
 .cellbox.delmode .dtop{fill:#ffcccc}
 .cellbox.delmode{animation:delshake .45s}
 @keyframes delshake{0%,100%{transform:rotate(0)}25%{transform:rotate(-2deg)}75%{transform:rotate(2deg)}}
 /* 机の上の文字（向きに合わせて位置を変える） */
-.dnum,.dname,.dflags{position:absolute;z-index:3;text-align:center;pointer-events:none;line-height:1}
-.dnum{font-size:15px;font-weight:700;color:#7a5000}
+/* 席番号は出さない。名前が天板の中央にくるように置く */
+.dname,.dflags{position:absolute;z-index:3;text-align:center;pointer-events:none;line-height:1}
 .dname{font-size:22px;font-weight:700;color:#3a2000;word-break:break-all;line-height:1.15}
 .dname.blank{color:rgba(122,80,0,.35);font-weight:400;font-size:15px}
 .dflags{font-size:12px;letter-spacing:1px}
-.cellbox[data-f="up"]    .dnum{top:6px;left:0;right:0}
-.cellbox[data-f="up"]    .dflags{top:24px;left:0;right:0}
-.cellbox[data-f="up"]    .dname{top:42px;left:0;right:0}
-.cellbox[data-f="down"]  .dnum{top:36px;left:0;right:0}
-.cellbox[data-f="down"]  .dflags{top:54px;left:0;right:0}
-.cellbox[data-f="down"]  .dname{top:72px;left:0;right:0}
-.cellbox[data-f="left"]  .dnum{top:20px;left:20px;right:47px}
-.cellbox[data-f="left"]  .dflags{top:38px;left:20px;right:47px}
-.cellbox[data-f="left"]  .dname{top:56px;left:20px;right:47px}
-.cellbox[data-f="right"] .dnum{top:20px;left:47px;right:20px}
-.cellbox[data-f="right"] .dflags{top:38px;left:47px;right:20px}
-.cellbox[data-f="right"] .dname{top:56px;left:47px;right:20px}
+.cellbox[data-f="up"]    .dflags{top:10px;left:0;right:0}
+.cellbox[data-f="up"]    .dname{top:28px;left:0;right:0}
+.cellbox[data-f="down"]  .dflags{top:40px;left:0;right:0}
+.cellbox[data-f="down"]  .dname{top:58px;left:0;right:0}
+.cellbox[data-f="left"]  .dflags{top:24px;left:20px;right:47px}
+.cellbox[data-f="left"]  .dname{top:42px;left:20px;right:47px}
+.cellbox[data-f="right"] .dflags{top:24px;left:47px;right:20px}
+.cellbox[data-f="right"] .dname{top:42px;left:47px;right:20px}
 /* 男女のしるし */
 .dsex{
   position:absolute;z-index:4;width:19px;height:19px;border-radius:50%;
@@ -381,7 +382,6 @@ details.hlp>summary:hover{background:var(--accent-l)}
   padding:22px 16px;margin:14px auto;max-width:460px;box-shadow:0 10px 34px rgba(0,0,0,.25);
 }
 .k-roulette .nm{font-size:clamp(26px,8vw,52px);font-weight:700;line-height:1.2;min-height:1.2em}
-.k-seatno{font-size:clamp(34px,11vw,80px);font-weight:700;color:var(--accent)}
 .k-btn{
   font-family:inherit;font-size:17px;font-weight:700;border:none;cursor:pointer;
   background:#fff;color:var(--accent-d);border-radius:999px;padding:13px 34px;
@@ -756,10 +756,7 @@ details.hlp>summary:hover{background:var(--accent-l)}
 
     <div class="k-panel" id="k-obo">
       <div class="k-big" id="obo-name" style="font-size:clamp(24px,7vw,46px)">…</div>
-      <div class="k-roulette">
-        <div style="font-size:13px;color:var(--sub);font-weight:700">せきばんごう</div>
-        <div class="k-seatno" id="obo-no">?</div>
-      </div>
+      <div class="k-roulette"><div class="nm">どの席かな…？</div></div>
       <div id="obo-btns">
         <button class="k-btn" id="obo-stop" onclick="oboStop()">🛑 ストップ！</button>
         <button class="k-btn" id="obo-next" style="display:none" onclick="oboNext()">つぎの人 ▶</button>
@@ -847,7 +844,7 @@ function pairKey(a,b){return [a,b].sort().join('|');}
 function shuffle(a){for(var i=a.length-1;i>0;i--){var j=0|Math.random()*(i+1);var t=a[i];a[i]=a[j];a[j]=t;}return a;}
 function esc(s){return String(s).replace(/[&<>"']/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
 
-/* 有効な席のIDを、前列→左から順に返す（＝出席番号順の席番号） */
+/* 有効な席のIDを、前列→左から順に返す（席の並び順のもとになる） */
 function activeSeats(){
   var out=[];
   for(var r=0;r<S.rows;r++)for(var c=0;c<S.cols;c++){
@@ -855,7 +852,6 @@ function activeSeats(){
   }
   return out;
 }
-function seatNo(seatId){return activeSeats().indexOf(seatId)+1;}
 function isFrontRow(r){return r < (S.visionRows||1);}
 function visionSet(){
   var s={};
@@ -905,10 +901,10 @@ function liveFixed(){
   });
   return out;
 }
-/* 「12番（前から2列目・左から3番目）」のような席の呼び名 */
+/* 「前から2列目・左から3番目」のような席の呼び名。席番号は使わない */
 function seatLabel(seatId){
   var p=rc(seatId);
-  return seatNo(seatId)+'番（前から'+(p.r+1)+'列目・左から'+(p.c+1)+'番目）';
+  return '前から'+(p.r+1)+'列目・左から'+(p.c+1)+'番目';
 }
 
 /* =========================================================
@@ -1351,7 +1347,6 @@ function renderSeats(){
          deskSvg(x.facing)+
          sexMark(x.sex)+
          (pn?'<div class="dpin" title="📌 '+esc(pn)+' の固定席">📌</div>':'')+
-         '<div class="dnum">'+n+'番</div>'+
          (S.showFlags?'<div class="dflags">'+flagIcons(nm)+'</div>':'')+
          '<div class="dname'+(nm?'':' blank')+'" style="font-size:'+(nm?nameFont(nm):15)+'px">'+
            (nm?esc(nm):'空席')+'</div>'+
@@ -1411,7 +1406,7 @@ function openPicker(r,c){
   var used={};
   activeSeats().forEach(function(s){ if(S.cells[s].name) used[S.cells[s].name]=1; });
   var avail=S.students.filter(function(n){return !used[n]||n===x.name;});
-  var h='<h3>席 '+seatNo(sid(r,c))+' に入る子をえらぶ</h3>';
+  var h='<h3>'+esc(seatLabel(sid(r,c)))+' の席に入る子をえらぶ</h3>';
   h+='<div class="pick-list">';
   avail.forEach(function(n,i){
     h+='<button onclick="pick(\''+esc(n).replace(/'/g,"\\'")+'\')">'+esc(n)+'</button>';
@@ -2561,7 +2556,7 @@ function renderHelp(){
   h+=helpSection('👦 子ども画面（発表）',
     '<table class="hlp-tbl"><tr><th>発表のしかた</th><th>流れ</th></tr>'+
     '<tr><td>🎊 いっせいに発表</td><td>カウントダウン → ルーレット → 全員の席が1つずつめくれる</td></tr>'+
-    '<tr><td>👤 ひとりずつ発表</td><td>名前 → 席番号のルーレット → 先生が「ストップ！」を押す</td></tr>'+
+    '<tr><td>👤 ひとりずつ発表</td><td>名前 → 席がつぎつぎに光る → 先生が「ストップ！」を押す</td></tr>'+
     '</table>'+
     '<div class="hlp-note"><div class="h">💡 何度出しても記録は増えません</div>'+
     '同じ座席表をもう一度発表しても統計は二重に増えません。増えるのは新しく配置し直したときだけです。</div>'+
@@ -2723,19 +2718,17 @@ function prepare(){
   return current;
 }
 function renderKGrid(gridId,hidden){
-  var h=blackboardSvg(S.cols), n=0;
+  var h=blackboardSvg(S.cols);
   for(var r=0;r<S.rows;r++){
     h+='<div class="seat-row">';
     for(var c=0;c<S.cols;c++){
       var x=cell(r,c);
       if(!x||!x.on){ h+='<div class="cellbox" style="visibility:hidden"></div>'; continue; }
-      n++;
       var nm=current[sid(r,c)]||'';
       // 子ども画面では前列の色分けをしない（どの席が特別かを見せないため）
       var cls='cellbox seat'+(hidden?' veil':(nm?' has-name':''));
       h+='<div class="'+cls+'" data-f="'+x.facing+'" data-g="'+((S.kidGroups&&x.group)||0)+'" id="'+gridId+'-'+sid(r,c)+'">'+
          deskSvg(x.facing)+
-         '<div class="dnum">'+n+'番</div>'+
          /* 子ども画面には配慮フラグを出さない（人に見せてよい情報ではない） */
          '<div class="dname'+(nm?'':' blank')+'" style="font-size:'+(nm?nameFont(nm):15)+'px">'+
            (nm?esc(nm):'空席')+'</div>'+
@@ -2850,7 +2843,6 @@ function oboShow(){
     document.querySelectorAll('#obo-grid .cellbox.hi').forEach(function(e){e.classList.remove('hi');});
     var el=id('obo-grid-'+s);
     if(el)el.classList.add('hi');
-    id('obo-no').textContent=seatNo(s)+'番';
     sndTick(); k++;
   },90);
 }
@@ -2872,7 +2864,6 @@ function oboStop(){
     document.querySelectorAll('#obo-grid .cellbox.hi').forEach(function(e){e.classList.remove('hi');});
     var s=seq[k], el=id('obo-grid-'+s);
     if(el) el.classList.add('hi');
-    id('obo-no').textContent=seatNo(s)+'番';
     if(k>=seq.length-1){ oboLand(it); return; }
     sndTick(); k++; delay*=1.32;
     setTimeout(step,delay);
