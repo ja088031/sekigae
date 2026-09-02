@@ -609,7 +609,8 @@ details.hlp>summary:hover{background:var(--accent-l)}
       <h2>🎯 フラグごとの班の散らし方</h2>
       <div class="hint">
         チェックを入れたフラグは、同じ班に集まらないように散らします。外すと配置に影響しなくなります。<br>
-        班は、座席タブで色を塗ってあればその班、塗っていなければ2×2のまとまりです。
+        班は、座席タブで色を塗ってあればその班、塗っていなければ2×2のまとまりです。<br>
+        <b>同じ色でも離れていれば別の班</b>として数えるので、9班以上でも色を使い回せます。
       </div>
       <div class="row" id="spread-list" style="gap:14px"></div>
       <div class="hint" style="margin:8px 0 0">
@@ -619,7 +620,7 @@ details.hlp>summary:hover{background:var(--accent-l)}
     </div>
     <div class="card">
       <h2>✅ フラグの分散チェック</h2>
-      <div class="hint">今の座席表で、フラグの子が同じ班に偏っていないか確認します。<br>班分けの色を塗ってあればその班、塗っていなければ2×2のまとまりを班とみなします。</div>
+      <div class="hint">今の座席表で、フラグの子が同じ班に偏っていないか確認します。<br>班分けの色を塗ってあればその班、塗っていなければ2×2のまとまりを班とみなします。<br>同じ色でも離れていれば別の班として数えます。</div>
       <button class="btn sm" onclick="renderFlagCheck()">チェックする</button>
       <div id="flag-check" style="margin-top:8px"></div>
     </div>
@@ -1763,21 +1764,38 @@ function renderSeps(){
 function usePaintedGroups(){
   return activeSeats().some(function(s){ return S.cells[s].group>0; });
 }
+/* 班の一覧を席IDの配列で返す。
+   色は8つしかないので9班以上では使い回される。そこで同じ色でも
+   前後左右でつながっているかたまりごとに別の班とみなす（離れていれば別の班）。 */
 function quadGroups(){
-  var qs={};
+  var seats=activeSeats(), out=[];
   if(usePaintedGroups()){
-    activeSeats().forEach(function(s){
+    var seen={};
+    seats.forEach(function(s){
+      if(seen[s])return;
       var g=S.cells[s].group;
       if(!g)return;                       // 色が塗られていない席は班なし
-      (qs['g'+g]=qs['g'+g]||[]).push(s);
+      var comp=[], stack=[s];
+      seen[s]=1;
+      while(stack.length){
+        var cur=stack.pop();
+        comp.push(cur);
+        seats.forEach(function(t){
+          if(seen[t]||S.cells[t].group!==g||!isAdjSeat(cur,t))return;
+          seen[t]=1; stack.push(t);
+        });
+      }
+      out.push(comp);
     });
   }else{
-    activeSeats().forEach(function(s){
+    var qs={};
+    seats.forEach(function(s){
       var p=rc(s), k=(p.r>>1)+'-'+(p.c>>1);
       (qs[k]=qs[k]||[]).push(s);
     });
+    out=Object.keys(qs).map(function(k){return qs[k];});
   }
-  return Object.keys(qs).map(function(k){return qs[k];});
+  return out;
 }
 /* フラグごとに「同じ班に集めない」を効かせるかどうか。未設定は有効とみなす */
 function spreadOn(key){ return !S.spread || S.spread[key]!==false; }
@@ -1938,22 +1956,21 @@ function buildCtx(){
     }
     nbIdx.push(new Int32Array(lst));
   }
-  // 班。色を塗ってあればその班、なければ2×2のまとまり。
-  // 色を塗っていない席は「班なし」として quadOf を -1 にする。
+  // 班は quadGroups() と同じ定義を使う（席IDの配列で返るので席番号に直す）。
+  // 班に入っていない席は quadOf を -1 にする。
   var painted=usePaintedGroups();
-  var quadOf=new Int32Array(L), quads=[], qmap={};
-  for(s=0;s<L;s++){
-    var key;
-    if(painted){
-      var g=S.cells[seats[s]].group;
-      if(!g){ quadOf[s]=-1; continue; }
-      key='g'+g;
-    }else{
-      var p=rc(seats[s]); key=(p.r>>1)+'-'+(p.c>>1);
-    }
-    if(qmap[key]===undefined){ qmap[key]=quads.length; quads.push([]); }
-    quadOf[s]=qmap[key]; quads[qmap[key]].push(s);
-  }
+  var seatIx={}; seats.forEach(function(sd,k2){ seatIx[sd]=k2; });
+  var quadOf=new Int32Array(L), quads=[];
+  for(s=0;s<L;s++) quadOf[s]=-1;
+  quadGroups().forEach(function(g){
+    var members=[], qi=quads.length;
+    g.forEach(function(sd){
+      var ix=seatIx[sd];
+      if(ix===undefined)return;
+      quadOf[ix]=qi; members.push(ix);
+    });
+    if(members.length) quads.push(members); else quads.length=qi;
+  });
   // 特別支援学級在籍を同じ班にしない指定
   var snBit=0;
   for(i=0;i<FLAGS.length;i++) if(FLAGS[i].key==='sn') snBit=(1<<i);
@@ -2484,7 +2501,8 @@ function renderHelp(){
     '<table class="hlp-tbl"><tr><th>モード</th><th>できること</th></tr>'+
     '<tr><td>🗑 削除モード</td><td>机をタップして「席」と「空き」を切り替える</td></tr>'+
     '<tr><td>🔄 向き変更</td><td>タップするたび 上→右→下→左 と回る。コの字型も作れる</td></tr>'+
-    '<tr><td>🎨 班分け</td><td>色を選んで机をなぞると班になる（8色）</td></tr>'+
+    '<tr><td>🎨 班分け</td><td>色を選んで机をなぞると班になる。色は8つだが、'+
+      '<b>同じ色でも離れていれば別の班</b>なので9班以上でも使い回せる</td></tr>'+
     '<tr><td>♂♀ 男女席</td><td>男子席・女子席を指定。市松などの一括設定つき</td></tr>'+
     '</table>'+
     '<p><b>机の色の意味</b>：水色は名前が入っている席、木の色は空席です。'+
